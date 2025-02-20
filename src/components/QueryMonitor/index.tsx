@@ -35,6 +35,7 @@ import logo from '../assets/logo_queryhawk.jpg';
 import { QueryMetrics } from './types';
 import { MetricBar } from './MetricBar';
 import GrafanaDashboard from './GrafanaDashboard';
+import DatabaseHealthMetrics from './DatabaseHealthMetrics';
 
 //hardcoded
 const QueryMonitor: React.FC = () => {
@@ -117,35 +118,46 @@ const QueryMonitor: React.FC = () => {
 
         {/* Metrics Grid */}
         <Grid container spacing={3}>
-        <Grid container spacing={3}>
-        {/* CPU Usage Dashboard Panel */}
-        <Grid item xs={12} md={6}>  {/* Changed from xs={12} to xs={12} md={6} */}
-          <GrafanaDashboard
-            dashboardUrl="http://localhost:3001/d-solo/000000039/postgresql-database"
-            orgId="1"
-            panelId="22"
-            theme="dark"
-            height="300px"
-            refreshInterval={10}
-            authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-            title="PostgreSQL CPU Usage"
-          />
-        </Grid>
+          {/* Database Health Metrics */}
+          <Grid item xs={12}>
+            <DatabaseHealthMetrics
+              prometheusUrl={prometheusUrl}
+              refreshInterval={30000} // refresh every 30 seconds
+            />
+          </Grid>
+          <Grid container spacing={3}>
+            {/* CPU Usage Dashboard Panel */}
+            <Grid item xs={12} md={6}>
+              {' '}
+              {/* Changed from xs={12} to xs={12} md={6} */}
+              <GrafanaDashboard
+                dashboardUrl='http://localhost:3001/d-solo/000000039/postgresql-database'
+                orgId='1'
+                panelId='22'
+                theme='dark'
+                height='300px'
+                refreshInterval={10}
+                authToken={import.meta.env.VITE_GRAFANA_TOKEN}
+                title='PostgreSQL CPU Usage'
+              />
+            </Grid>
 
-        {/* Memory Usage Dashboard Panel */}
-        <Grid item xs={12} md={6}>  {/* Changed from xs={12} to xs={12} md={6} */}
-          <GrafanaDashboard
-            dashboardUrl="http://localhost:3001/d-solo/000000039/postgresql-database"
-            orgId="1"
-            panelId="24"
-            theme="dark"
-            height="300px"
-            refreshInterval={10}
-            authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-            title="PostgreSQL Memory Usage"
-          />
-        </Grid>
-      </Grid>
+            {/* Memory Usage Dashboard Panel */}
+            <Grid item xs={12} md={6}>
+              {' '}
+              {/* Changed from xs={12} to xs={12} md={6} */}
+              <GrafanaDashboard
+                dashboardUrl='http://localhost:3001/d-solo/000000039/postgresql-database'
+                orgId='1'
+                panelId='24'
+                theme='dark'
+                height='300px'
+                refreshInterval={10}
+                authToken={import.meta.env.VITE_GRAFANA_TOKEN}
+                title='PostgreSQL Memory Usage'
+              />
+            </Grid>
+          </Grid>
           {/* Key Metrics */}
           {/* <Grid item xs={12} md={6}>
             <Card>
