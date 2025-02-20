@@ -1,252 +1,165 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import {
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Container,
-  Grid,
-  IconButton,
-  InputAdornment,
-  LinearProgress,
-  Paper,
-  TextField,
-  Typography,
-  Alert,
-  Button,
-} from '@mui/material';
-import {
-  Storage as DatabaseIcon,
-  Search as SearchIcon,
-  Timeline as TimelineIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material';
-import logo from '../assets/logo_queryhawk.jpg';
-import { QueryMetrics } from './types';
-import { MetricBar } from './MetricBar';
-import GrafanaDashboard from './GrafanaDashboard';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box, Container, Grid, IconButton, Typography, Button, Card, CardContent,
+  TextField, CircularProgress, ThemeProvider, createTheme } from "@mui/material";
+import Logo from "../assets/logo_queryhawk";
+import GrafanaDashboard from "./GrafanaDashboard";
 
-//hardcoded
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#a594fd',
+    },
+    secondary: {
+      main: '#ff4081',
+    },
+    background: {
+      default: '#000000',
+      paper: '#181b1f',
+    },
+  },
+});
+
+const buttonStyles = {
+  height: theme => theme.spacing(7),
+  textTransform: 'none',
+  px: 4,
+  borderRadius: 1.5,
+  whiteSpace: 'nowrap',
+};
+
+
 const QueryMonitor: React.FC = () => {
-  const [queryMetrics] = useState<QueryMetrics>({
-    executionTime: 100,
-    planningTime: 100,
-    rowsReturned: 100,
-    memoryUsage: 100,
-    cacheHitRatio: 100,
-  });
-
-  const [performanceData] = useState([
-    { time: '10:00', qps: 40 },
-    { time: '11:00', qps: 50 },
-    { time: '12:00', qps: 60 },
-    { time: '13:00', qps: 70 },
-  ]);
-
   const navigate = useNavigate();
+  const goTestQueryPage = () => { navigate("/test-query");};
+  const [isConnected, setIsConnected] = useState(false);
+  const [dbUrl, setDbUrl] = useState("");
+  const [error, setError] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const goTestQueryPage = () => {
-    navigate('/test-query');
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:4002/api/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          databaseUrl: dbUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to connect to database");
+      }
+      setIsConnected(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsConnecting(false);
+    }
   };
-
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 3 }}>
-      <Container maxWidth='xl'>
+    <ThemeProvider theme={darkTheme}>
+      <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
         {/* Header */}
         <Box
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 4,
+            py: 2, // Padding top and bottom: 16px (2 * 8px)
+            px: 2, // Padding left and right: 16px (2 * 8px)
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton sx={{ p: 0 }}>
-              <Box
-                component='img'
-                src={logo}
-                alt='QueryHawk Logo'
-                sx={{ width: 40, height: 40, objectFit: 'contain' }}
-              />
-            </IconButton>
-            <Typography variant='h6' component='h6'>
-              QueryHawk
-            </Typography>
-          </Box>
-          <Button variant='contained' startIcon={<DatabaseIcon />} size='large'>
-            Connect Database
-          </Button>
-          <Button
-            variant='contained'
-            startIcon={<DatabaseIcon />}
-            size='large'
-            onClick={goTestQueryPage} // Trigger navigation to the test query page
-          >
-            Test Query
-          </Button>
+          <Container maxWidth="xl">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between", // Puts space between logo and button
+                alignItems: "center",
+              }}
+            >
+              {/* Logo and Title */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton sx={{ p: 0, color: "white" }}>
+                  {" "}
+                  {/* Logo */}
+                  <Logo />
+                </IconButton>
+                <Typography variant="h6" fontWeight="500" color="white">
+                  QueryHawk
+                </Typography>
+              </Box>
+
+              {/* Test Query Button */}
+              <Button
+                onClick={() => navigate("/test-query")}
+                sx={{
+                  ...buttonStyles,
+                  color: "#fff",
+                  "&:hover": {
+                    color: "primary.main",
+                    bgcolor: "transparent",
+                  },
+                }}
+              >
+                Test Query
+              </Button>
+            </Box>
+          </Container>
         </Box>
 
-        {/* Query Input
-        <Paper sx={{ mb: 4, p: 0.5 }}>
-          <TextField
-            fullWidth
-            placeholder='Enter your SQL query...'
-            variant='outlined'
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position='end'>
-                  <IconButton>
-                    <SearchIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Paper> */}
-
-        {/* Metrics Grid */}
-        <Grid container spacing={3}>
-        <Grid container spacing={3}>
-        {/* CPU Usage Dashboard Panel */}
-        <Grid item xs={12} md={6}>  {/* Changed from xs={12} to xs={12} md={6} */}
-          <GrafanaDashboard
-            dashboardUrl="http://localhost:3001/d-solo/000000039/postgresql-database"
-            orgId="1"
-            panelId="22"
-            theme="dark"
-            height="300px"
-            refreshInterval={10}
-            authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-            title="PostgreSQL CPU Usage"
-          />
-        </Grid>
-
-        {/* Memory Usage Dashboard Panel */}
-        <Grid item xs={12} md={6}>  {/* Changed from xs={12} to xs={12} md={6} */}
-          <GrafanaDashboard
-            dashboardUrl="http://localhost:3001/d-solo/000000039/postgresql-database"
-            orgId="1"
-            panelId="24"
-            theme="dark"
-            height="300px"
-            refreshInterval={10}
-            authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-            title="PostgreSQL Memory Usage"
-          />
-        </Grid>
-      </Grid>
-          {/* Key Metrics */}
-          {/* <Grid item xs={12} md={6}>
-            <Card>
-              <CardHeader
-                title={<Typography variant='h6'>Key Metrics</Typography>}
-                avatar={<TimelineIcon color='primary' />}
-              />
-              <CardContent>
-                <MetricBar
-                  label='Execution Time'
-                  value={queryMetrics.executionTime}
-                  unit='ms'
-                />
-                <MetricBar
-                  label='Planning Time'
-                  value={queryMetrics.planningTime}
-                  unit='ms'
-                />
-                <MetricBar
-                  label='Rows Returned'
-                  value={queryMetrics.rowsReturned}
-                  unit=''
-                />
-                <MetricBar
-                  label='Memory Usage'
-                  value={queryMetrics.memoryUsage}
-                  unit='MB'
-                />
-                <MetricBar
-                  label='Cache Hit Ratio'
-                  value={queryMetrics.cacheHitRatio}
-                  unit='%'
-                />
-              </CardContent>
-            </Card>
-          </Grid> */}
-
-          {/* Query Performance */}
-          {/* <Grid item xs={12} md={6}>
-            <Card>
-              <CardHeader
-                title={<Typography variant='h6'>Query Performance</Typography>}
-              />
-              <CardContent>
-                <Box sx={{ height: 300 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={performanceData}>
-                      <CartesianGrid strokeDasharray='3 3' />
-                      <XAxis dataKey='time' />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type='monotone' dataKey='qps' stroke='#2196f3' />
-                    </LineChart>
-                  </ResponsiveContainer>
+        {/* Main Content */}
+        <Container maxWidth="xl" sx={{ mt: 4 }}>
+          {/* Database Connection Section - Always visible */}
+          <Box sx={{ mb: 4 }}>
+            <Card sx={{ bgcolor: "background.paper", borderRadius: 2 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <TextField
+                    label="Database URI"
+                    // placeholder="postgresql://user:pass@localhost:5432/dbname"
+                    variant="outlined"
+                    fullWidth
+                    value={dbUrl}
+                    onChange={(e) => setDbUrl(e.target.value)}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleConnect}
+                    disabled={isConnecting || !dbUrl}
+                    sx={buttonStyles}
+                  >
+                    {isConnecting ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Connect Database"
+                    )}
+                  </Button>
                 </Box>
               </CardContent>
             </Card>
-          </Grid> */}
+          </Box>
 
-          {/* Alerts */}
-          {/* <Grid item xs={12} md={6}>
-            <Card>
-              <CardHeader
-                title={<Typography variant='h6'>Critical Alerts</Typography>}
-                avatar={<WarningIcon color='error' />}
-              />
-              <CardContent>
-                <Alert severity='error' sx={{ mb: 2 }}>
-                  High Memory Usage: DB1 - 92% used
-                </Alert>
-                <Alert severity='error'>
-                  Slow Query: SELECT taking &gt; 10s
-                </Alert>
-              </CardContent>
-            </Card>
-          </Grid> */}
-
-          {/* Active Connections */}
-          {/* <Grid item xs={12} md={6}>
-            <Card>
-              <CardHeader
-                title={<Typography variant='h6'>Active Connections</Typography>}
-              />
-              <CardContent>
-                <Box sx={{ height: 300 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={performanceData}>
-                      <CartesianGrid strokeDasharray='3 3' />
-                      <XAxis dataKey='time' />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type='monotone' dataKey='qps' stroke='#4caf50' />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid> */}
-        </Grid>
-      </Container>
-    </Box>
+          {/* Dashboard Content */}
+          {isConnected && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="1" title="Transaction Rate" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="2" title="Cache Hit Ratio" />
+              </Grid>
+            </Grid>
+          )}
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 };
 

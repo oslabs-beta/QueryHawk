@@ -14,17 +14,23 @@ services: # This section defines all the services (containers) we want to run
       - '54322:5432' # PostgreSQL database port
       - '54323:8000' # Supabase Studio - web interface for managing database
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      environment:
+      POSTGRES_PASSWORD: postgres123  # Default development password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       # Persist database data even when container restarts
       - supabase_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup. 
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter
     ports:
       - '9187:9187'
     environment:
-      - DATA_SOURCE_NAME=${SUPABASE_URI}
+      DATA_SOURCE_NAME: ${SUPABASE_URI}
+      #- DATA_SOURCE_NAME= ${DATA_SOURCE_NAME}
     depends_on:
       - supabase
 
@@ -43,8 +49,10 @@ services: # This section defines all the services (containers) we want to run
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
     environment:
-      - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
+      - DATABASE_URL=postgresql://postgres:postgres@supabase:5432/queryhawk
+      # - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
     depends_on:
       - supabase # Ensures database starts first
 
@@ -95,11 +103,18 @@ services: # This section defines all the services (containers) we want to run
     environment:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CORS_ENABLED=true
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       # Persist dashboard configurations and data
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus # Needs Prometheus to start first
 
@@ -115,12 +130,17 @@ services: # This section defines all the services (containers) we want to run
       - ./:/app/ # Maps local code to container
       - /app/node_modules # Keeps node_modules in container
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_GRAFANA_URL=http://localhost:3001 # Grafana URL
+    tty: true
+    stdin_open: true
     depends_on:
       - backend # Ensures API is available first
+      - grafana # Ensures Grafana is available first
 
   # Persistent storage for our services
 volumes:
   supabase_data: # Database storage
   prometheus_data: # Metrics storage
   grafana_data: # Dashboard configurations
+

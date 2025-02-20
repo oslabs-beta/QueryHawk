@@ -1,0 +1,48 @@
+# Grafana API version - required for all provisioning configs
+apiVersion: 1
+# Data Sources Configuration
+# First, remove any existing data sources to prevent duplicates
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+  - name: PostgreSQL
+    orgId: 1
+# Define all data sources that should be automatically configured
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy # How Grafana accesses the data source
+    url: http://prometheus:9090 # Internal Docker network URL
+    isDefault: true # Make this the default data source
+    jsonData:
+      timeInterval: 15s # Minimum time interval between data points
+      queryTimeout: "60s" # Maximum time for queries to run
+      httpMethod: "POST" # HTTP method for queries
+    editable: true # Allow editing through the UI
+    version: 1
+# PostgreSQL Data Source
+  - name: PostgreSQL
+    type: postgres
+    url: supabase:5432
+    user: postgres # Database user
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: "disable" # Disable SSL for local development
+      maxOpenConns: 100 # Maximum number of open connections
+      maxIdleConns: 100 # Maximum number of idle connections
+      connMaxLifetime: 14400 # Maximum connection lifetime in seconds
+      postgresVersion: 1300 # PostgreSQL version (13.00)
+      timescaledb: false # TimescaleDB support disabled
+    editable: true
+    version: 1
+# Jaeger Data Source for distributed tracing
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686 # Internal Docker network URL for Jaeger
+    jsonData:
+      nodeGraph:
+        enabled: true # Enable node graph visualization
+    editable: true
+    version: 1
