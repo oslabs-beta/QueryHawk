@@ -1,4 +1,4 @@
-version: '3.7'
+# version: '3.7'
 
 #ALL VOLUMES AND COMMANDS AND BUILDS WILL NEED TO BE UPDATED WITH ACCURATE
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
@@ -8,25 +8,26 @@ services: # This section defines all the services (containers) we want to run
   # Supabase - Our main database and auth service
   # Runs PostgreSQL and provides real-time capabilities
   #format is host_port:container_port
-  supabase:
-    image: postgres:13 # Official Supabase Docker image
-    ports:
-      - '54322:5432' # PostgreSQL database port
-      - '54323:8000' # Supabase Studio - web interface for managing database
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      # Persist database data even when container restarts
-      - supabase_data:/var/lib/postgresql/data
+  # supabase:
+  #   image: postgres:13 # Official Supabase Docker image. Might need to change
+  #   ports:
+  #     - '54322:5432' # PostgreSQL database port
+  #     - '54323:8000' # Supabase Studio - web interface for managing database
+  #   environment:
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   volumes:
+  #     # Persist database data even when container restarts
+  #     - supabase_data:/var/lib/postgresql/data
 
-  postgres_exporter:
-    image: prometheuscommunity/postgres-exporter
-    ports:
-      - '9187:9187'
-    environment:
-      - DATA_SOURCE_NAME=${SUPABASE_URI}
-    depends_on:
-      - supabase
+  # testing dynamic URI
+  # postgres_exporter:
+  #   image: prometheuscommunity/postgres-exporter
+  #   ports:
+  #     - '9187:9187'
+  #   environment:
+  #     - DATA_SOURCE_NAME=${USER_DB_URI} # changes SUPABASE_URI TO USER_DB_URI
+  #   depends_on:
+  #     - backend # changes from supabase to backend
 
   # Express Backend - Handles our API and query monitoring
   backend:
@@ -42,11 +43,11 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
+      - /var/run/docker.sock:/var/run/docker.sock # Add this line. Might take off. going to try the prometheus way
     environment:
-      - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
-    depends_on:
-      - supabase # Ensures database starts first
+    networks:
+      - monitoring_network
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
@@ -61,6 +62,8 @@ services: # This section defines all the services (containers) we want to run
       - '4318:4318' # OTLP HTTP
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - monitoring_network
 
   # Prometheus - Collects and stores our metrics
   prometheus:
@@ -71,14 +74,21 @@ services: # This section defines all the services (containers) we want to run
       # Configuration and data persistence
       - ./prometheus:/etc/prometheus # Local config files
       - prometheus_data:/prometheus # Stored metrics
+      - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery !! Make sure to try this it could work.
+      - postgres_targets:/etc/prometheus/postgres_targets # Create a volume for dynamic target files
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle' # Enables runtime reloading of config
+      - '--storage.tsdb.retention.time=15d' # Adjust retention as needed
+    networks:
+      - monitoring_network
 
   otel-collector:
     image: otel/opentelemetry-collector
     ports:
       - '4316:4316' # OTLP gRPC receiver
       - '4319:4319' # OTLP HTTP receiver
+      - '8889:8889' # Prometheus metrics
     volumes:
       #left side is file in my project folder and right is where it appears in the container
       - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
@@ -86,6 +96,8 @@ services: # This section defines all the services (containers) we want to run
     depends_on:
       - jaeger
       - prometheus
+    networks:
+      - monitoring_network
 
   # Grafana - Creates dashboards from our metrics
   grafana:
@@ -100,8 +112,13 @@ services: # This section defines all the services (containers) we want to run
     volumes:
       # Persist dashboard configurations and data
       - grafana_data:/var/lib/grafana
+      # Add preconfigured dashboards
+      # - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      # - ./grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus # Needs Prometheus to start first
+    networks:
+      - monitoring_network
 
   # React Frontend - Our user interface
   frontend:
@@ -118,9 +135,21 @@ services: # This section defines all the services (containers) we want to run
       - REACT_APP_BACKEND_URL=http://localhost:4002 # Backend API URL
     depends_on:
       - backend # Ensures API is available first
+    networks:
+      - monitoring_network
 
-  # Persistent storage for our services
+  # Persistent storage for our servicesclea
+# volumes:
+#   # supabase_data: # Database storage
+#   prometheus_data: # Metrics storage
+#   grafana_data: # Dashboard configurations
+networks:
+  monitoring_network:
+    driver: bridge
 volumes:
-  supabase_data: # Database storage
-  prometheus_data: # Metrics storage
-  grafana_data: # Dashboard configurations
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  postgres_targets:
+    driver: local

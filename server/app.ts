@@ -39,7 +39,14 @@ const errorHandler: ErrorRequestHandler = (
   };
   const errorObj: ServerError = { ...defaultErr, ...err };
   console.log(errorObj.log);
-  res.status(errorObj.status).json(errorObj.message);
+
+  if (!res.headersSent) {
+    res.status(errorObj.status).json(errorObj.message);
+  } else {
+    // If headers have already been sent, log the error but don't send a new response
+    console.error('Error response attempt after headers sent:', errorObj);
+  }
+  // res.status(errorObj.status).json(errorObj.message);
 };
 
 app.use(errorHandler);

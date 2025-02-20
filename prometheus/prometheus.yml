@@ -3,16 +3,7 @@ global:
   scrape_interval: 15s # How often Prometheus will scrape metrics
   evaluation_interval: 15s # How often Prometheus will evaluate rules
 
-# For each job below:
-
-# job_name: Label for this monitoring task
-# static_configs: List of things to watch
-# targets: Where to look for metrics
-
-# Uses Docker service names
-# Includes the port where metrics are exposed
-
-# What Prometheus needs to monitor
+# Scrape configurations
 scrape_configs:
   # Monitor Prometheus itself
   - job_name: 'prometheus'
@@ -22,73 +13,50 @@ scrape_configs:
   # Monitor our Express backend to collect metrics about queries
   - job_name: 'express'
     static_configs:
-      - targets: ['localhost:4002'] # Uses Docker service name.Prometheus scrapes metrics from the backend on port 4002 (host port). this wasa backend:4001 but was not working for me (bryan)
+      - targets: ['localhost:4002']
 
-  # Configure Prometheus to scrape metrics from PostgreSQL
-  # The postgres_exporter translates database-specific metrics
-  # into a format Prometheus can understand and visualize
-  # We are scrape_config 2 times might need to remove this one.
+  # Dynamic PostgreSQL monitoring
+  - job_name: 'postgres-exporters'
+    file_sd_configs:
+      - files:
+          - '/etc/prometheus/postgres_targets/*.yml'
+        refresh_interval: 5s
+    relabel_configs:
+      # Add user_id as a label
+      - source_labels: [user_id]
+        target_label: user_id
+      # Add database name as a label
+      - source_labels: [database]
+        target_label: database_name
+      # Keep the original instance label
+      - source_labels: [instance]
+        target_label: instance
 
-  - job_name: 'postgresql'
-    static_configs:
-      - targets: ['postgres_exporter:9187']
-
-  # have to change jaeger
   # OpenTelemetry collector
   - job_name: 'otel-collector'
     static_configs:
-      - targets: ['otel-collector:8889'] # Port where collector exposes metrics
-
-#       #global config notes:
-#       Think of it like setting a timer:
-
-# scrape_interval:
-
-# Like a camera taking snapshots of your system
-# Every 15 seconds, Prometheus:
-
-# Checks all your services
-# Collects their metrics
-# Stores the numbers
-
-# If set to 30s, you'd have less detailed data
-# If set to 5s, you'd have more detailed data but use more storage
-
-# evaluation_interval:
-
-# How often Prometheus checks its rules
-# Rules might be like:
-
-# "Alert if query takes > 1 second"
-# "Alert if database is slow"
-# "Alert if errors are high"
-
-# Every 15 seconds it evaluates these rules
-
-# To break down what metrics each job will  probably collect (we configure the 'what to collect' in other files):
-
-# Prometheus Self-Monitoring Metrics:
-
-# Copyprometheus_targets               # How many targets are being monitored
-# prometheus_notifications_sent    # Alert notifications
-# prometheus_scrape_duration      # How long scrapes take
-# prometheus_storage_samples      # How many data points stored
-
-# Express Backend Metrics (What you'll set up):
-
-# Copyhttp_request_duration_seconds   # How long requests take
-# http_requests_total            # Number of requests
-# query_execution_time_seconds   # How long SQL queries take
-# query_errors_total            # Number of failed queries
-# active_connections            # Current number of connections
-# memory_usage_bytes            # Server memory use
-
-# PostgreSQL/Supabase Metrics:
-
-# Copypg_stat_database_tup_fetched   # Rows fetched
-# pg_stat_database_tup_inserted  # Rows inserted
-# pg_stat_database_tup_updated   # Rows updated
-# pg_stat_database_tup_deleted   # Rows deleted
-# pg_stat_database_conflicts     # Query conflicts
-# pg_stat_activity_count        # Active connections
-# pg_stat_bgwriter_buffers      # Buffer usage
+      - targets: ['otel-collector:8889']
+# List of metrics that will be collected:
+#
+# PostgreSQL Metrics (per database):
+# - pg_stat_database_tup_fetched     # Rows fetched
+# - pg_stat_database_tup_inserted    # Rows inserted
+# - pg_stat_database_tup_updated     # Rows updated
+# - pg_stat_database_tup_deleted     # Rows deleted
+# - pg_stat_database_conflicts       # Query conflicts
+# - pg_stat_activity_count          # Active connections
+# - pg_stat_bgwriter_buffers        # Buffer usage
+#
+# Express Backend Metrics:
+# - http_request_duration_seconds    # How long requests take
+# - http_requests_total             # Number of requests
+# - query_execution_time_seconds    # How long SQL queries take
+# - query_errors_total             # Number of failed queries
+# - active_connections             # Current number of connections
+# - memory_usage_bytes             # Server memory use
+#
+# Prometheus Self-Monitoring:
+# - prometheus_targets              # How many targets are being monitored
+# - prometheus_notifications_sent   # Alert notifications
+# - prometheus_scrape_duration     # How long scrapes take
+# - prometheus_storage_samples     # How many data points stored

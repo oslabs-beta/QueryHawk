@@ -1,13 +1,16 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 // import { ServerError } from '../../types/types.ts';
 import pg from 'pg';
-
+// need to import exporter
+import { setDatabaseUriToPostgresExporter } from '../utils/dockerPostgresExporter';
 type userDatabaseController = {
-  connectDB: RequestHandler;
+  getQueryMetrics: RequestHandler; // gets metrics for users query from their database.
+  connectToPostgresExporter: RequestHandler;
+  // disconnectFromPostgresExporter: RequestHandler;
 };
 
 const userDatabaseController: userDatabaseController = {
-  connectDB: async (
+  getQueryMetrics: async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -88,6 +91,45 @@ const userDatabaseController: userDatabaseController = {
         status: 500,
         message: { err: 'Failed to get query metrics from database.' },
       });
+    }
+  },
+
+  // making a connection to postgres exporter with users URI
+  connectToPostgresExporter: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const { uri_string, id } = req.body;
+
+    if (!uri_string) {
+      console.log('Missing uri string.');
+      res.status(400).json({ message: 'uri string is required.' });
+      return;
+    }
+
+    try {
+      console.log('Setting URI for Postgres Exporter...');
+
+      await setDatabaseUriToPostgresExporter(uri_string, id);
+      // const exporterStatus = await setDatabaseUriToPostgresExporter(uri_string);
+
+      // if (!exporterStatus) {
+      //   res.status(500).json({ message: 'Failed to start Postgres Exporter' });
+      //   return;
+      // }
+      // else connection to postgres exporter was sucessful
+      console.log('Postgres Exporter started successfully!');
+      res
+        .status(400)
+        .json({ message: 'Database URI set sucessfully in Postgres Exporter' });
+
+      // return next();
+    } catch (err) {
+      console.error('Error setting URI to Postgres Exporter', err);
+      res
+        .status(500)
+        .json({ message: 'Failed to set database URI to Postgres Exporter' });
     }
   },
 };

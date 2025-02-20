@@ -29,6 +29,7 @@
     "@radix-ui/react-slot": "^1.1.1",
     "concurrently": "^9.1.2",
     "cors": "^2.8.5",
+    "dockerode": "^4.0.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "lucide-react": "^0.474.0",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/cors": "^2.8.17",
+    "@types/dockerode": "^3.3.34",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.0",
     "@types/pg": "^8.11.11",
