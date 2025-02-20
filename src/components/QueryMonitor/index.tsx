@@ -35,6 +35,7 @@ import logo from '../assets/logo_queryhawk.jpg';
 import { QueryMetrics } from './types';
 import { MetricBar } from './MetricBar';
 import GrafanaDashboard from './GrafanaDashboard';
+import DatabaseHealthMetrics from './DatabaseHealthMetrics';
 
 //hardcoded
 const QueryMonitor: React.FC = () => {
