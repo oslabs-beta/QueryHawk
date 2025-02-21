@@ -58,11 +58,16 @@ interface ExporterConfig {
   port?: number;
 }
 
-export const setDatabaseUriToPostgresExporter = async (
-  userId: string,
-  uri_string: string,
-  port?: number
-) => {
+// export const setDatabaseUriToPostgresExporter = async (
+//   userId: string,
+//   uri_string: string,
+//   port?: number
+// ) => {
+export const setDatabaseUriToPostgresExporter = async ({
+  userId,
+  uri_string,
+  port,
+}: ExporterConfig) => {
   const containerName = `postgres-exporter-${userId}`;
   const hostPort = port || (await findAvailablePort(9187, 9999));
 

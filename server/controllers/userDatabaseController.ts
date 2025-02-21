@@ -100,7 +100,7 @@ const userDatabaseController: userDatabaseController = {
     res: Response,
     next: NextFunction
   ): Promise<void> => {
-    const { uri_string, id } = req.body;
+    const { userId, uri_string } = req.body;
 
     if (!uri_string) {
       console.log('Missing uri string.');
@@ -111,7 +111,7 @@ const userDatabaseController: userDatabaseController = {
     try {
       console.log('Setting URI for Postgres Exporter...');
 
-      await setDatabaseUriToPostgresExporter(uri_string, id);
+      await setDatabaseUriToPostgresExporter({ userId, uri_string });
       // const exporterStatus = await setDatabaseUriToPostgresExporter(uri_string);
 
       // if (!exporterStatus) {
