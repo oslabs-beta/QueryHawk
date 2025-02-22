@@ -75,7 +75,8 @@ export const setDatabaseUriToPostgresExporter = async ({
     // Create Prometheus target configuration
     const targetConfig = {
       // targets: [`${userId}-postgres-exporter:9187`],
-      targets: [`postgres-exporter-${userId}:9187`],
+      // targets: [`postgres-exporter-${userId}:9187`],
+      targets: [`postgres-exporter-${userId}:`],
       labels: {
         user_id: userId,
         instance: `postgres-exporter-${userId}`,
@@ -147,8 +148,8 @@ async function findAvailablePort(start: number, end: number): Promise<number> {
 export const cleanupExporter = async (userId: string) => {
   // const containerName = `${userId}-postgres-exporter:9187`;
   // const containerName = `${userId}-postgres-exporter`; // removing port from container name
-  // const containerName = `postgres-exporter-${userId}`;
-  const containerName = `postgres-exporter-${userId}:9187`;
+  const containerName = `postgres-exporter-${userId}`;
+  // const containerName = `postgres-exporter-${userId}:9187`;
   try {
     // Stop and remove container
     const container = docker.getContainer(containerName);
