@@ -4,32 +4,8 @@
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
 #FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
 #and will need to add opentelemetry
+
 services: # This section defines all the services (containers) we want to run
-  # Supabase - Our main database and auth service
-  # Runs PostgreSQL and provides real-time capabilities
-  #format is host_port:container_port
-  # supabase:
-  #   image: postgres:13 # Official Supabase Docker image. Might need to change
-  #   ports:
-  #     - '54322:5432' # PostgreSQL database port
-  #     - '54323:8000' # Supabase Studio - web interface for managing database
-  #   environment:
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #   volumes:
-  #     # Persist database data even when container restarts
-  #     - supabase_data:/var/lib/postgresql/data
-
-  # testing dynamic URI
-  # postgres_exporter:
-  #   image: prometheuscommunity/postgres-exporter
-  #   ports:
-  #     - '9187:9187'
-  #   environment:
-  #     - DATA_SOURCE_NAME=${USER_DB_URI} # changes SUPABASE_URI TO USER_DB_URI
-  #   depends_on:
-  #     - backend # changes from supabase to backend
-
-  # Express Backend - Handles our API and query monitoring
   backend:
     build:
       context: .
@@ -43,11 +19,12 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
-      - /var/run/docker.sock:/var/run/docker.sock # Add this line. Might take off. going to try the prometheus way
+      - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery
+      - postgres_targets:/var/prometheus/postgres_targets
     environment:
       - NODE_ENV=development
     networks:
-      - monitoring_network
+      - queryhawk_monitoring_network
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
@@ -63,7 +40,7 @@ services: # This section defines all the services (containers) we want to run
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     networks:
-      - monitoring_network
+      - queryhawk_monitoring_network
 
   # Prometheus - Collects and stores our metrics
   prometheus:
@@ -73,15 +50,15 @@ services: # This section defines all the services (containers) we want to run
     volumes:
       # Configuration and data persistence
       - ./prometheus:/etc/prometheus # Local config files
-      - prometheus_data:/prometheus # Stored metrics
-      - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery !! Make sure to try this it could work.
-      - postgres_targets:/etc/prometheus/postgres_targets # Create a volume for dynamic target files
+      - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery
+      - postgres_targets:/var/prometheus/postgres_targets
+
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-lifecycle' # Enables runtime reloading of config
       - '--storage.tsdb.retention.time=15d' # Adjust retention as needed
     networks:
-      - monitoring_network
+      - queryhawk_monitoring_network
 
   otel-collector:
     image: otel/opentelemetry-collector
@@ -97,7 +74,7 @@ services: # This section defines all the services (containers) we want to run
       - jaeger
       - prometheus
     networks:
-      - monitoring_network
+      - queryhawk_monitoring_network
 
   # Grafana - Creates dashboards from our metrics
   grafana:
@@ -118,7 +95,7 @@ services: # This section defines all the services (containers) we want to run
     depends_on:
       - prometheus # Needs Prometheus to start first
     networks:
-      - monitoring_network
+      - queryhawk_monitoring_network
 
   # React Frontend - Our user interface
   frontend:
@@ -136,20 +113,17 @@ services: # This section defines all the services (containers) we want to run
     depends_on:
       - backend # Ensures API is available first
     networks:
-      - monitoring_network
-
+      - queryhawk_monitoring_network
   # Persistent storage for our servicesclea
-# volumes:
-#   # supabase_data: # Database storage
-#   prometheus_data: # Metrics storage
-#   grafana_data: # Dashboard configurations
+
 networks:
-  monitoring_network:
+  queryhawk_monitoring_network:
+    name: queryhawk_monitoring_network
     driver: bridge
 volumes:
-  prometheus_data:
+  prometheus_data: # Metrics storage
     driver: local
-  grafana_data:
+  grafana_data: # Dashboard configurations
     driver: local
   postgres_targets:
     driver: local

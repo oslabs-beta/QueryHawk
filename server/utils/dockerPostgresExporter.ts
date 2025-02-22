@@ -1,51 +1,3 @@
-// latest
-// import Docker from 'dockerode';
-// const docker = new Docker();
-
-// // startPostgresExporter
-// // setDatabaseUriToPostgresExporter
-
-// // Security: Be careful with sensitive data like database credentials. Ensure that the user-provided URI is securely handled, and avoid logging sensitive information.
-// // Networking: Ensure that the user’s database is accessible by the postgres_exporter container. If it’s running on another host or network, you may need to handle networking accordingly (e.g., Docker networking, port-forwarding).
-// // Multiple Users: If you are handling metrics for multiple users, you may want to ensure that each postgres_exporter instance is isolated (e.g., different ports) or spun up dynamically per user request.
-// export const setDatabaseUriToPostgresExporter = async (uri_string: string) => {
-//   try {
-//     const container = await docker.createContainer({
-//       Image: 'prometheuscommunity/postgres-exporter', // Image for the exporter
-//       Env: [`DATA_SOURCE_NAME=${uri_string}`], // Pass the user’s database URI
-//       ExposedPorts: {
-//         '9187/tcp': {},
-//       },
-//       HostConfig: {
-//         PortBindings: {
-//           '9187/tcp': [
-//             {
-//               HostPort: '9187',
-//             },
-//           ],
-//         },
-//       },
-//       name: 'postgres_exporter',
-//       Labels: {
-//         'com.docker.compose.service': 'postgres_exporter', // Custom label for Prometheus discovery
-//       },
-//     });
-
-//     await container.start();
-//     console.log('Postgres Exporter container started with user database URI');
-//   } catch (err) {
-//     console.error('Error starting Postgres Exporter:', err);
-
-//     if (err?.json?.message?.includes('No such image')) {
-//       console.error(
-//         'It looks like the image is not available locally. Please pull the image first: docker pull prometheuscommunity/postgres-exporter'
-//       );
-//     }
-
-//     throw err; // Re-throw the error to ensure it's handled appropriately in your controller
-//   }
-// };
-
 import Docker from 'dockerode';
 import fs from 'fs/promises';
 import path from 'path';
@@ -58,18 +10,24 @@ interface ExporterConfig {
   port?: number;
 }
 
-// export const setDatabaseUriToPostgresExporter = async (
-//   userId: string,
-//   uri_string: string,
-//   port?: number
-// ) => {
 export const setDatabaseUriToPostgresExporter = async ({
   userId,
   uri_string,
   port,
 }: ExporterConfig) => {
+  // const containerName = `${userId}-postgres-exporter`;
   const containerName = `postgres-exporter-${userId}`;
   const hostPort = port || (await findAvailablePort(9187, 9999));
+
+  // checking if network eists before creating any containers
+  try {
+    await docker.getNetwork('queryhawk_monitoring_network').inspect();
+  } catch (err) {
+    console.error('Network not found:', err);
+    throw new Error(
+      'Required Docker network not found: queryhawk_monitoring_network'
+    );
+  }
 
   try {
     // Check if container already exists
@@ -90,7 +48,7 @@ export const setDatabaseUriToPostgresExporter = async ({
     // Create new container
     const container = await docker.createContainer({
       Image: 'prometheuscommunity/postgres-exporter',
-      name: containerName,
+      name: `postgres-exporter-${userId}`,
       Env: [`DATA_SOURCE_NAME=${uri_string}`],
       ExposedPorts: {
         '9187/tcp': {},
@@ -102,10 +60,12 @@ export const setDatabaseUriToPostgresExporter = async ({
         RestartPolicy: {
           Name: 'always',
         },
+        NetworkMode: 'queryhawk_monitoring_network',
       },
       Labels: {
         'user.id': userId,
         'exporter.type': 'postgres',
+        'com.docker.compose.project': 'queryhawk', //for prometheus discover
         'com.docker.compose.service': 'postgres_exporter',
       },
     });
@@ -114,15 +74,17 @@ export const setDatabaseUriToPostgresExporter = async ({
 
     // Create Prometheus target configuration
     const targetConfig = {
-      targets: [`localhost:${hostPort}`],
+      // targets: [`${userId}-postgres-exporter:9187`],
+      targets: [`postgres-exporter-${userId}:9187`],
       labels: {
         user_id: userId,
-        instance: containerName,
+        instance: `postgres-exporter-${userId}`,
       },
     };
 
     // Ensure target directory exists
-    const targetDir = '/etc/prometheus/postgres_targets';
+    const targetDir = '/var/prometheus/postgres_targets';
+    // const targetDir = '/etc/prometheus/postgres_targets';
     await fs.mkdir(targetDir, { recursive: true });
 
     // Write target configuration
@@ -183,8 +145,10 @@ async function findAvailablePort(start: number, end: number): Promise<number> {
 
 // Cleanup function for when monitoring is stopped
 export const cleanupExporter = async (userId: string) => {
-  const containerName = `postgres-exporter-${userId}`;
-
+  // const containerName = `${userId}-postgres-exporter:9187`;
+  // const containerName = `${userId}-postgres-exporter`; // removing port from container name
+  // const containerName = `postgres-exporter-${userId}`;
+  const containerName = `postgres-exporter-${userId}:9187`;
   try {
     // Stop and remove container
     const container = docker.getContainer(containerName);
@@ -192,7 +156,8 @@ export const cleanupExporter = async (userId: string) => {
     await container.remove();
 
     // Remove Prometheus target configuration
-    await fs.unlink(`/etc/prometheus/postgres_targets/${userId}.yml`);
+    await fs.unlink(`/var/prometheus/postgres_targets/${userId}.yml`);
+    // await fs.unlink(`/etc/prometheus/postgres_targets/${userId}.yml`);
 
     // Trigger Prometheus reload
     await fetch('http://prometheus:9090/-/reload', { method: 'POST' });

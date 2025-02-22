@@ -3,6 +3,10 @@ global:
   scrape_interval: 15s # How often Prometheus will scrape metrics
   evaluation_interval: 15s # How often Prometheus will evaluate rules
 
+# Web configuration to enable lifecycle API
+# web:
+#   enable-lifecycle: true
+
 # Scrape configurations
 scrape_configs:
   # Monitor Prometheus itself
@@ -14,12 +18,14 @@ scrape_configs:
   - job_name: 'express'
     static_configs:
       - targets: ['localhost:4002']
+      # - targets: ['backend:4002']
 
   # Dynamic PostgreSQL monitoring
   - job_name: 'postgres-exporters'
     file_sd_configs:
       - files:
-          - '/etc/prometheus/postgres_targets/*.yml'
+          # - '/etc/prometheus/postgres_targets/*.yml'
+          - '/var/prometheus/postgres_targets/*.yml'
         refresh_interval: 5s
     relabel_configs:
       # Add user_id as a label
