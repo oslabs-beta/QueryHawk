@@ -8,21 +8,21 @@ services: # This section defines all the services (containers) we want to run
   # Supabase - Our main database and auth service
   # Runs PostgreSQL and provides real-time capabilities
   #format is host_port:container_port
-  supabase:
-    image: postgres:13 # Official Supabase Docker image
-    ports:
-      - '54322:5432' # PostgreSQL database port
-      - '54323:8000' # Supabase Studio - web interface for managing database
-    environment:
-      environment:
-      POSTGRES_PASSWORD: postgres123  # Default development password
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
-      # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      # Persist database data even when container restarts
-      - supabase_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup. 
+  # supabase:
+  #   image: postgres:13 # Official Supabase Docker image
+  #   ports:
+  #     - '54322:5432' # PostgreSQL database port
+  #     - '54323:8000' # Supabase Studio - web interface for managing database
+  #   environment:
+  #     environment:
+  #     POSTGRES_PASSWORD: postgres123  # Default development password
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_DB: postgres
+  #     # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   volumes:
+  #     # Persist database data even when container restarts
+  #     - supabase_data:/var/lib/postgresql/data
+  #     - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup. 
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter

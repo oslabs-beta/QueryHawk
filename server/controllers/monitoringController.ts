@@ -40,7 +40,7 @@ const dbConnectionGauge = new promClient.Gauge({
   const dbBlocksRead = new promClient.Gauge({
     name: "pg_stat_database_blks_read",
     help: "Number of blocks read from disk",
-    labelNames: ["datname"],  // Already correct
+    labelNames: ["datname"],
   });
 
 // Register all metrics
@@ -251,7 +251,7 @@ const monitoringController = {
       // Set correct content type for Prometheus
       res.set("Content-Type", "text/plain; version=0.0.4");
 
-      const metrics = await register.metrics();
+      const metrics = await register.metrics(); // Get metrics from the registry
       res.end(metrics);
     } catch (err) {
       console.error("Error collecting metrics:", err);
