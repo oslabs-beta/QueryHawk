@@ -2,36 +2,13 @@ import { Request, Response } from 'express';
 import fetch from 'node-fetch';
 import jwt from 'jsonwebtoken';
 import OAuthModel from '../models/OAuthModel';
-
-interface GithubTokenResponse {
-  access_token?: string;
-  error?: string;
-  error_description?: string;
-}
-
-interface GithubUserResponse {
-  id: number;
-  login: string;
-  email: string;
-  name: string;
-  avatar_url: string;
-}
-
-interface AuthenticatedUser {
-  id: number;
-  username: string;
-  email: string;
-  name: string;
-  avatarUrl: string;
-}
-
-interface CustomError extends Error {
-  statusCode?: number;
-}
+import { GithubTokenResponse, GithubUser, AuthenticatedUser } from '../types/auth';
 
 const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
 const githubClientId = process.env.GITHUB_CLIENT_ID;
-
+interface CustomError extends Error {
+  statusCode?: number;
+}
 class OAuthController {
   // Private method to handle errors consistently throughout the controller
   private createError(message: string, statusCode: number = 500): CustomError {
@@ -77,7 +54,7 @@ class OAuthController {
   // Private method to fetch user data from GitHub using the access token
   private async getGithubUser(
     accessToken: string
-  ): Promise<GithubUserResponse> {
+  ): Promise<GithubUser> {
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -89,7 +66,7 @@ class OAuthController {
       throw this.createError('Failed to fetch user data from GitHub', 401);
     }
 
-    return userResponse.json() as Promise<GithubUserResponse>;
+    return userResponse.json() as Promise<GithubUser>;
   }
 
   // Private method to generate a JWT token for our authenticated user
@@ -133,8 +110,8 @@ class OAuthController {
         id: user.id,
         username: user.username,
         email: user.email,
-        name: user.name,
-        avatarUrl: user.avatar_url,
+        name: user.first_name,
+        avatarUrl: githubUser.avatar_url,
       };
 
       // Generate a session token

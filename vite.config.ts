@@ -7,15 +7,19 @@ export default defineConfig({
   // Remove comment once we connect our frontend to our backend
   server: {
     proxy: {
-      '/api': 'http://localhost:4001',
+      '/api': {
+        target: 'http://backend:4002', // Updated to match the exposed port
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
     },
-    // Add settings to help with debugging
-    host: true,
+    host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    open: true,
-  },
-  // Add logging
-  logLevel: 'info',
-  clearScreen: false,
+    open: false,
+    watch: {
+      usePolling: true
+    }
+  }
 });

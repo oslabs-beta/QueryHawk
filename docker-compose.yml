@@ -45,6 +45,11 @@ services: # This section defines all the services (containers) we want to run
     environment:
       - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
+      - PORT=4001
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - CORS_ORIGIN=http://localhost:5173
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - supabase # Ensures database starts first
 
@@ -115,7 +120,9 @@ services: # This section defines all the services (containers) we want to run
       - ./:/app/ # Maps local code to container
       - /app/node_modules # Keeps node_modules in container
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_APP_BACKEND_URL=http://localhost:4002
+      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - NODE_ENV=development
     depends_on:
       - backend # Ensures API is available first
 
