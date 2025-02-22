@@ -57,6 +57,10 @@ const QueryMonitor: React.FC = () => {
         const data = await response.json();
         throw new Error(data.message || "Failed to connect to database");
       }
+
+      // Add a small delay to allow metrics to be collected
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       setIsConnected(true);
     } catch (err) {
       setError(

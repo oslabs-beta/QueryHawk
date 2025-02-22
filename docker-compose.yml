@@ -29,7 +29,7 @@ services: # This section defines all the services (containers) we want to run
     ports:
       - '9187:9187'
     environment:
-      DATA_SOURCE_NAME: ${SUPABASE_URI}
+      DATA_SOURCE_NAME: ${DATABASE_URL}
       #- DATA_SOURCE_NAME= ${DATA_SOURCE_NAME}
     depends_on:
       - supabase
@@ -40,7 +40,7 @@ services: # This section defines all the services (containers) we want to run
       context: .
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
-      - '4002:4001' # API will be available on localhost:4002
+      - '4002:4002'  # Changed to match ports # API will be available on localhost:4002
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container
@@ -49,7 +49,8 @@ services: # This section defines all the services (containers) we want to run
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@supabase:5432/queryhawk
+      - PORT=4002
+      - DATABASE_URL=${DATABASE_URL}
       # - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry

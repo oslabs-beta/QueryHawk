@@ -21,8 +21,9 @@ scrape_configs:
 
   # Monitor our Express backend to collect metrics about queries
   - job_name: 'express'
+    metrics_path: '/api/metrics'
     static_configs:
-      - targets: ['localhost:4002'] # Uses Docker service name.Prometheus scrapes metrics from the backend on port 4002 (host port). this wasa backend:4001 but was not working for me (bryan)
+      - targets: ['backend:4002'] # Uses Docker service name.Prometheus scrapes metrics from the backend on port 4002 (host port). this wasa backend:4001 but was not working for me (bryan)
 
   # Configure Prometheus to scrape metrics from PostgreSQL
   # The postgres_exporter translates database-specific metrics

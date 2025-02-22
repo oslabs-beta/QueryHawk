@@ -34,7 +34,8 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
         refresh: '5s',
         panelId,
         'auth.anonymous': 'true',
-        kiosk: 'true'
+        kiosk: 'true',
+        'var-database': 'postgres',
     };
     // Add all params to the URL
     Object.entries(params).forEach(([key, value]) => {
