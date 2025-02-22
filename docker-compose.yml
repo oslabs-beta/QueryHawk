@@ -49,12 +49,13 @@ services: # This section defines all the services (containers) we want to run
       - '9090:9090' # Prometheus web interface
     volumes:
       # Configuration and data persistence
-      - ./prometheus:/etc/prometheus # Local config files
+      # - ./prometheus:/var/prometheus # Local config files changing mount from etc to var to be consitent through app
+      - ./prometheus/prometheus.yml:/var/prometheus/prometheus.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery
       - postgres_targets:/var/prometheus/postgres_targets
 
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--config.file=/var/prometheus/prometheus.yml' #  changing mount from etc to var to be consitent through app
       - '--web.enable-lifecycle' # Enables runtime reloading of config
       - '--storage.tsdb.retention.time=15d' # Adjust retention as needed
     networks:
@@ -69,7 +70,7 @@ services: # This section defines all the services (containers) we want to run
     volumes:
       #left side is file in my project folder and right is where it appears in the container
       - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-    command: ['--config=/etc/otel/config.yml']
+    command: ['--config=/etc/otel/config.yml'] #might need to change etc to var
     depends_on:
       - jaeger
       - prometheus

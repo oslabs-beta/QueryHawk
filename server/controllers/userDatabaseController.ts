@@ -121,7 +121,7 @@ const userDatabaseController: userDatabaseController = {
       // else connection to postgres exporter was sucessful
       console.log('Postgres Exporter started successfully!');
       res
-        .status(400)
+        .status(200)
         .json({ message: 'Database URI set sucessfully in Postgres Exporter' });
 
       // return next();

@@ -10,6 +10,28 @@ interface ExporterConfig {
   port?: number;
 }
 
+async function checkPermissions(dir: string): Promise<void> {
+  try {
+    // Try to create a test file
+    const testFile = path.join(dir, '.permission-test');
+    await fs.writeFile(testFile, '', { mode: 0o644 });
+    await fs.unlink(testFile);
+  } catch (error) {
+    throw new Error(`Permission check failed for ${dir}: ${error.message}`);
+  }
+}
+
+// Helper function to check if directory is writable
+async function isDirectoryWritable(dir: string): Promise<boolean> {
+  try {
+    const testFile = path.join(dir, '.write-test');
+    await fs.writeFile(testFile, '');
+    await fs.unlink(testFile);
+    return true;
+  } catch {
+    return false;
+  }
+}
 export const setDatabaseUriToPostgresExporter = async ({
   userId,
   uri_string,
@@ -18,6 +40,26 @@ export const setDatabaseUriToPostgresExporter = async ({
   // const containerName = `${userId}-postgres-exporter`;
   const containerName = `postgres-exporter-${userId}`;
   const hostPort = port || (await findAvailablePort(9187, 9999));
+  const targetDir = '/var/prometheus/postgres_targets';
+
+  // Add the permissions check here, before the directory writable check
+  await checkPermissions(targetDir);
+
+  // Verify directory access
+  if (!(await isDirectoryWritable(targetDir))) {
+    throw new Error(
+      `Directory ${targetDir} is not writable by the backend service`
+    );
+  }
+
+  try {
+    await docker.getNetwork('queryhawk_monitoring_network').inspect();
+  } catch (err) {
+    console.error('Network not found:', err);
+    throw new Error(
+      'Required Docker network not found: queryhawk_monitoring_network'
+    );
+  }
 
   // checking if network eists before creating any containers
   try {
@@ -48,7 +90,8 @@ export const setDatabaseUriToPostgresExporter = async ({
     // Create new container
     const container = await docker.createContainer({
       Image: 'prometheuscommunity/postgres-exporter',
-      name: `postgres-exporter-${userId}`,
+      // name: `postgres-exporter-${userId}`,
+      name: containerName,
       Env: [`DATA_SOURCE_NAME=${uri_string}`],
       ExposedPorts: {
         '9187/tcp': {},
@@ -75,16 +118,16 @@ export const setDatabaseUriToPostgresExporter = async ({
     // Create Prometheus target configuration
     const targetConfig = {
       // targets: [`${userId}-postgres-exporter:9187`],
-      // targets: [`postgres-exporter-${userId}:9187`],
-      targets: [`postgres-exporter-${userId}:`],
+      targets: [`postgres-exporter-${userId}:9187`],
+      // targets: [`postgres-exporter-${userId}:`],
       labels: {
         user_id: userId,
         instance: `postgres-exporter-${userId}`,
       },
     };
 
-    // Ensure target directory exists
-    const targetDir = '/var/prometheus/postgres_targets';
+    // // Ensure target directory exists
+    // const targetDir = '/var/prometheus/postgres_targets';
     // const targetDir = '/etc/prometheus/postgres_targets';
     await fs.mkdir(targetDir, { recursive: true });
 
@@ -94,12 +137,59 @@ export const setDatabaseUriToPostgresExporter = async ({
       JSON.stringify([targetConfig], null, 2)
     );
 
+    // works but co
+    // try {
+    //   // Create directory if it doesn't exist
+    //   await fs.mkdir(targetDir, { recursive: true, mode: 0o755 });
+
+    //   // Write configuration file with explicit permissions
+    //   const configPath = path.join(targetDir, `${userId}.yml`);
+    //   await fs.writeFile(configPath, JSON.stringify([targetConfig], null, 2), {
+    //     mode: 0o644,
+    //   });
+
+    //   // Verify file was written
+    //   await fs.access(configPath, fs.constants.R_OK | fs.constants.W_OK);
+    // } catch (error) {
+    //   console.error('Error writing target configuration:', error);
+    //   // Cleanup if file operations fail
+    //   try {
+    //     await container.stop();
+    //     await container.remove();
+    //   } catch (cleanupError) {
+    //     console.error('Error during cleanup:', cleanupError);
+    //   }
+    //   throw new Error(`Failed to write target configuration: ${error.message}`);
+    // }
+
+    // Trigger Prometheus configuration reload
+    // try {
+    //   await fetch('http://prometheus:9090/-/reload', { method: 'POST' });
+    // } catch (error) {
+    //   console.warn('Failed to reload Prometheus config:', error);
+    //   // Don't fail the whole operation if Prometheus reload fails
+    // }
+
+    // return {
+    //   containerId: container.id,
+    //   port: hostPort,
+    //   name: containerName,
+    // };
+
     // Trigger Prometheus configuration reload
     try {
-      await fetch('http://prometheus:9090/-/reload', { method: 'POST' });
+      const response = await fetch('http://prometheus:9090/-/reload', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        console.warn(
+          'Prometheus reload returned non-200 status:',
+          response.status
+        );
+      }
     } catch (error) {
       console.warn('Failed to reload Prometheus config:', error);
-      // Don't fail the whole operation if Prometheus reload fails
+      // Don't fail the operation if Prometheus reload fails
     }
 
     return {

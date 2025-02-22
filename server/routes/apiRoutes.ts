@@ -15,6 +15,4 @@ router.post(
   }
 );
 
-// router.post('/query-metrics', userDatabaseController.getQueryMetrics);
-
 export default router;

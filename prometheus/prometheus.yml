@@ -29,14 +29,14 @@ scrape_configs:
         refresh_interval: 5s
     relabel_configs:
       # Add user_id as a label
-      - source_labels: [user_id]
+      - source_labels: ['__meta_file_content_labels_user_id']
         target_label: user_id
-      # Add database name as a label
-      - source_labels: [database]
-        target_label: database_name
       # Keep the original instance label
-      - source_labels: [instance]
+      - source_labels: ['__meta_file_content_labels_instance']
         target_label: instance
+      - source_labels: []
+        target_label: '__metrics_path__'
+        replacement: '/metrics'
 
   # OpenTelemetry collector
   - job_name: 'otel-collector'
