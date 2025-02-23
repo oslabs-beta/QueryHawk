@@ -3,22 +3,24 @@ global:
   scrape_interval: 15s # How often Prometheus will scrape metrics
   evaluation_interval: 15s # How often Prometheus will evaluate rules
 
-# Web configuration to enable lifecycle API
-# web:
-#   enable-lifecycle: true
-
 # Scrape configurations
 scrape_configs:
   # Monitor Prometheus itself
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      # - targets: ['localhost:9090'] # might need to change back to localhost
+      - targets: ['queryhawk-prometheus:9090']
 
   # Monitor our Express backend to collect metrics about queries
   - job_name: 'express'
     static_configs:
-      - targets: ['localhost:4002']
-      # - targets: ['backend:4002']
+      # - targets: ['localhost:4002']
+      - targets: ['backend:4002']
+
+  # Add this to your prometheus.yml
+  # - job_name: 'test_config'
+  #   static_configs:
+  #     - targets: ['test-target:1234']
 
   # Dynamic PostgreSQL monitoring
   - job_name: 'postgres-exporters'

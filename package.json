@@ -32,6 +32,7 @@
     "dockerode": "^4.0.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "js-yaml": "^4.1.0",
     "lucide-react": "^0.474.0",
     "pg": "^8.13.1",
     "prom-client": "^15.1.3",

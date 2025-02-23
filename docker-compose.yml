@@ -20,7 +20,8 @@ services: # This section defines all the services (containers) we want to run
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
       - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery
-      - postgres_targets:/var/prometheus/postgres_targets
+      # - postgres_targets:/var/prometheus/postgres_targets # named volume neeed to change to bind mount
+      - ./prometheus/postgres_targets:/var/prometheus/postgres_targets # Use bind mount
     environment:
       - NODE_ENV=development
     networks:
@@ -45,19 +46,22 @@ services: # This section defines all the services (containers) we want to run
   # Prometheus - Collects and stores our metrics
   prometheus:
     image: prom/prometheus # Official Prometheus image
+    container_name: queryhawk-prometheus # Explicit container name
     ports:
       - '9090:9090' # Prometheus web interface
     volumes:
-      # Configuration and data persistence
       # - ./prometheus:/var/prometheus # Local config files changing mount from etc to var to be consitent through app
-      - ./prometheus/prometheus.yml:/var/prometheus/prometheus.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock # Mount the Docker socket for dynamic discovery
-      - postgres_targets:/var/prometheus/postgres_targets
+      - ./prometheus/prometheus.yml:/var/prometheus/prometheus.yml # removed :ro
+      - /var/run/docker.sock:/var/run/docker.sock
+        # - postgres_targets:/var/prometheus/postgres_targets # named volume
+      - ./prometheus/postgres_targets:/var/prometheus/postgres_targets # Use bind mount
 
     command:
       - '--config.file=/var/prometheus/prometheus.yml' #  changing mount from etc to var to be consitent through app
-      - '--web.enable-lifecycle' # Enables runtime reloading of config
+      - '--web.enable-lifecycle'
       - '--storage.tsdb.retention.time=15d' # Adjust retention as needed
+      - '--web.enable-admin-api'
+      - '--web.cors.origin=.*'
     networks:
       - queryhawk_monitoring_network
 

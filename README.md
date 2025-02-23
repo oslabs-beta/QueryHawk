@@ -63,3 +63,6 @@ docker network prune
 
 Remove all dangling resources:
 docker system prune -a
+
+Remove postgres_target
+sudo rm -rf ./prometheus/postgres_targets/\*
