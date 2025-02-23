@@ -97,7 +97,7 @@ export const setDatabaseUriToPostgresExporter = async ({
     await container.start();
 
     const yamlContent = `- targets:
-  - "postgres-exporter-${userId}:9187"
+    - "postgres-exporter-${userId}:9187"
   labels:
     user_id: "${userId}"
     instance: "postgres-exporter-${userId}"
