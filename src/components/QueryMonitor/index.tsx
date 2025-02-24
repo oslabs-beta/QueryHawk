@@ -8,13 +8,10 @@ import {
   Typography,
   Button,
 } from '@mui/material';
-import {
-  Storage as DatabaseIcon
-} from '@mui/icons-material';
+import { Storage as DatabaseIcon } from '@mui/icons-material';
 import logo from '../assets/logo_queryhawk.jpg';
 import GrafanaDashboard from './GrafanaDashboard';
 import DatabaseHealthMetrics from './DatabaseHealthMetrics';
-
 
 const QueryMonitor: React.FC = () => {
   const navigate = useNavigate();
@@ -82,12 +79,12 @@ const QueryMonitor: React.FC = () => {
         {/* Metrics Grid */}
         <Grid container spacing={3}>
           {/* Database Health Metrics */}
-          <Grid item xs={12}>
+          {/* <Grid item xs={12}>
             <DatabaseHealthMetrics
               prometheusUrl={prometheusUrl}
               refreshInterval={30000} // refresh every 30 seconds
             />
-          </Grid>
+          </Grid> */}
           <Grid container spacing={3}>
             {/* CPU Usage Dashboard Panel */}
             <Grid item xs={12} md={6}>

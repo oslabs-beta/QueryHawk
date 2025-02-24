@@ -20,7 +20,7 @@ COPY types/ ./types/
 
 #express app runs on port 5000 in container 
 # EXPOSE command is used to declare which port the container will listen to internally.
-EXPOSE 4001
+EXPOSE 4002
 
 #execute! uses server script from json file
 CMD ["npm", "run", "server"]
