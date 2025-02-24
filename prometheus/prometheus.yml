@@ -33,7 +33,7 @@ scrape_configs:
 
   - job_name: 'postgresql'
     static_configs:
-      - targets: ['postgres-exporter-test:9187']
+      - targets: ['test_user_db:9187']
       # - targets: ['postgres_exporter:9187']
 
   # have to change jaeger

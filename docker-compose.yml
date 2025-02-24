@@ -36,7 +36,7 @@ services: # This section defines all the services (containers) we want to run
     volumes:
       - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
     networks:
-      default: {} # Uses the default network created by docker-compose
+      - queryhawk_monitoring_network # Uses the default network created by docker-compose
 
   # Express Backend - Handles our API and query monitoring
   backend:
@@ -58,6 +58,8 @@ services: # This section defines all the services (containers) we want to run
       # - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
+    networks:
+      - queryhawk_monitoring_network
     depends_on:
       - supabase # Ensures database starts first
 
@@ -87,6 +89,8 @@ services: # This section defines all the services (containers) we want to run
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-lifecycle'
+    networks:
+      - queryhawk_monitoring_network
 
   otel-collector:
     image: otel/opentelemetry-collector
@@ -144,6 +148,10 @@ services: # This section defines all the services (containers) we want to run
       - backend # Ensures API is available first
       - grafana # Ensures Grafana is available first
 
+networks:
+  queryhawk_monitoring_network:
+    name: queryhawk_monitoring_network
+    driver: bridge
   # Persistent storage for our services
 volumes:
   supabase_data: # Database storage
