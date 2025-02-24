@@ -13,7 +13,7 @@ router.post(
 );
 
 // Add monitoring routes
-router.post('/monitoring/setup', monitoringController.setupMonitoring);
+router.post('/connect', monitoringController.setupMonitoring);
 
 // Add the metrics endpoint
 router.get('/metrics', monitoringController.getMetrics);

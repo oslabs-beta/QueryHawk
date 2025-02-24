@@ -63,6 +63,9 @@ async function collectMetrics(pool: pkg.Pool, databaseUrl: string) {
       const dbNameResult = await client.query('SELECT current_database() as dbname');
       const dbName = dbNameResult.rows[0]?.dbname || 'postgres';
 
+      console.log("Currently collecting metrics from database:", dbName);
+      console.log("Using connection URL:", databaseUrl.replace(/:[^:@]+@/, ":****@"));
+
       // Get transaction rate
       const txnResult = await client.query(`
         SELECT xact_commit + xact_rollback AS total_transactions
@@ -154,6 +157,9 @@ const monitoringController = {
     next: NextFunction
   ): Promise<void> => {
     const { databaseUrl } = req.body;
+    console.log("API ENDPOINT HIT");
+    console.log("Setting up monitoring for:", databaseUrl);
+    console.log("Request received with database URL:", databaseUrl.replace(/:[^:@]+@/, ":****@"));
     console.log("Attempting to connect to database...");
 
     if (!databaseUrl) {
@@ -181,7 +187,10 @@ const monitoringController = {
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
-        ssl: { rejectUnauthorized: false },
+        ssl: {
+          rejectUnauthorized: false,
+          sslmode: 'require'
+        }
       };
 
       console.log("Connecting with config:", {
