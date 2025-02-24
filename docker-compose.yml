@@ -77,11 +77,18 @@ services:
     environment:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CORS_ENABLED=true
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       # Persist dashboard configurations and data
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus # Needs Prometheus to start first
 
@@ -97,13 +104,18 @@ services:
       - ./:/app/ # Maps local code to container
       - /app/node_modules # Keeps node_modules in container
     environment:
-      - VITE_APP_BACKEND_URL=http://localhost:4002
-      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - NODE_ENV=development
+      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - VITE_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_GRAFANA_URL=http://localhost:3001 # Grafana URL
+    tty: true
+    stdin_open: true
     depends_on:
       - backend # Ensures API is available first
+      - grafana # Ensures Grafana is available first
 
   # Persistent storage for our services
 volumes:
   prometheus_data: # Metrics storage
   grafana_data: # Dashboard configurations
+

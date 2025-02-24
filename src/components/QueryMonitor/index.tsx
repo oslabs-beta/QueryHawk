@@ -1,126 +1,169 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Container,
-  Grid,
-  IconButton,
-  Typography,
-  Button,
-} from '@mui/material';
-import { Storage as DatabaseIcon } from '@mui/icons-material';
-import logo from '../assets/logo_queryhawk.jpg';
-import GrafanaDashboard from './GrafanaDashboard';
-import DatabaseHealthMetrics from './DatabaseHealthMetrics';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box, Container, Grid, IconButton, Typography, Button, Card, CardContent,
+  TextField, CircularProgress, ThemeProvider, createTheme } from "@mui/material";
+import Logo from "../assets/logo_queryhawk";
+import GrafanaDashboard from "./GrafanaDashboard";
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#a594fd',
+    },
+    secondary: {
+      main: '#ff4081',
+    },
+    background: {
+      default: '#000000',
+      paper: '#181b1f',
+    },
+  },
+});
+
+const buttonStyles = {
+  height: theme => theme.spacing(7),
+  textTransform: 'none',
+  px: 4,
+  borderRadius: 1.5,
+  whiteSpace: 'nowrap',
+};
+
 
 const QueryMonitor: React.FC = () => {
   const navigate = useNavigate();
+  const goTestQueryPage = () => { navigate("/test-query");};
+  const [isConnected, setIsConnected] = useState(false);
+  const [dbUrl, setDbUrl] = useState("");
+  const [error, setError] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const goTestQueryPage = () => {
-    navigate('/test-query');
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:4002/api/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          databaseUrl: dbUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to connect to database");
+      }
+
+      // Add a small delay to allow metrics to be collected
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsConnected(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsConnecting(false);
+    }
   };
-
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 3 }}>
-      <Container maxWidth='xl'>
+    <ThemeProvider theme={darkTheme}>
+      <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
         {/* Header */}
         <Box
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 4,
+            py: 2, // Padding top and bottom: 16px (2 * 8px)
+            px: 2, // Padding left and right: 16px (2 * 8px)
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton sx={{ p: 0 }}>
-              <Box
-                component='img'
-                src={logo}
-                alt='QueryHawk Logo'
-                sx={{ width: 40, height: 40, objectFit: 'contain' }}
-              />
-            </IconButton>
-            <Typography variant='h6' component='h6'>
-              QueryHawk
-            </Typography>
-          </Box>
-          <Button variant='contained' startIcon={<DatabaseIcon />} size='large'>
-            Connect Database
-          </Button>
-          <Button
-            variant='contained'
-            startIcon={<DatabaseIcon />}
-            size='large'
-            onClick={goTestQueryPage} // Trigger navigation to the test query page
-          >
-            Test Query
-          </Button>
+          <Container maxWidth="xl">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between", // Puts space between logo and button
+                alignItems: "center",
+              }}
+            >
+              {/* Logo and Title */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton sx={{ p: 0, color: "white" }}>
+                  {" "}
+                  {/* Logo */}
+                  <Logo />
+                </IconButton>
+                <Typography variant="h6" fontWeight="500" color="white">
+                  QueryHawk
+                </Typography>
+              </Box>
+
+              {/* Test Query Button */}
+              <Button
+                onClick={() => navigate("/test-query")}
+                sx={{
+                  ...buttonStyles,
+                  color: "#fff",
+                  "&:hover": {
+                    color: "primary.main",
+                    bgcolor: "transparent",
+                  },
+                }}
+              >
+                Test Query
+              </Button>
+            </Box>
+          </Container>
         </Box>
 
-        {/* Query Input
-        <Paper sx={{ mb: 4, p: 0.5 }}>
-          <TextField
-            fullWidth
-            placeholder='Enter your SQL query...'
-            variant='outlined'
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position='end'>
-                  <IconButton>
-                    <SearchIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Paper> */}
+        {/* Main Content */}
+        <Container maxWidth="xl" sx={{ mt: 4 }}>
+          {/* Database Connection Section - Always visible */}
+          <Box sx={{ mb: 4 }}>
+            <Card sx={{ bgcolor: "background.paper", borderRadius: 2 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <TextField
+                    label="Database URI"
+                    // placeholder="postgresql://user:pass@localhost:5432/dbname"
+                    variant="outlined"
+                    fullWidth
+                    value={dbUrl}
+                    onChange={(e) => setDbUrl(e.target.value)}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleConnect}
+                    disabled={isConnecting || !dbUrl}
+                    sx={buttonStyles}
+                  >
+                    {isConnecting ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Connect Database"
+                    )}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
 
-        {/* Metrics Grid */}
-        <Grid container spacing={3}>
-          {/* Database Health Metrics */}
-          {/* <Grid item xs={12}>
-            <DatabaseHealthMetrics
-              prometheusUrl={prometheusUrl}
-              refreshInterval={30000} // refresh every 30 seconds
-            />
-          </Grid> */}
-          <Grid container spacing={3}>
-            {/* CPU Usage Dashboard Panel */}
-            <Grid item xs={12} md={6}>
-              {' '}
-              {/* Changed from xs={12} to xs={12} md={6} */}
-              <GrafanaDashboard
-                dashboardUrl='http://localhost:3001/d-solo/000000039/postgresql-database'
-                orgId='1'
-                panelId='22'
-                theme='dark'
-                height='300px'
-                refreshInterval={10}
-                authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-                title='PostgreSQL CPU Usage'
-              />
+          {/* Dashboard Content */}
+          {isConnected && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="1" title="Transaction Rate" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="2" title="Cache Hit Ratio" />
+              </Grid>
             </Grid>
-
-            {/* Memory Usage Dashboard Panel */}
-            <Grid item xs={12} md={6}>
-              {' '}
-              {/* Changed from xs={12} to xs={12} md={6} */}
-              <GrafanaDashboard
-                dashboardUrl='http://localhost:3001/d-solo/000000039/postgresql-database'
-                orgId='1'
-                panelId='24'
-                theme='dark'
-                height='300px'
-                refreshInterval={10}
-                authToken={import.meta.env.VITE_GRAFANA_TOKEN}
-                title='PostgreSQL Memory Usage'
-              />
-            </Grid>
-          </Grid>
-        </Grid>
-      </Container>
-    </Box>
+          )}
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 };
 

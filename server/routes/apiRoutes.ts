@@ -1,6 +1,7 @@
 //handles both auth and protected routes
 import express, { Request, Response, NextFunction } from 'express';
 import userDatabaseController from '../controllers/userDatabaseController';
+import monitoringController from '../controllers/monitoringController';
 import { authenticateUser } from '../middleware/authMiddleware';
 import OAuthController from '../controllers/OAuthController';
 
@@ -30,6 +31,12 @@ router.post('/auth/logout', authenticateUser, (req: Request, res: Response): voi
     res.status(500).json({ error: 'Logout failed' });
   }
 });
+
+// Add monitoring routes
+router.post('/connect', monitoringController.setupMonitoring);
+
+// Add the metrics endpoint
+router.get('/metrics', monitoringController.getMetrics);
 
 // ===== Protected API Routes =====
 router.post(

@@ -1,159 +1,96 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  CircularProgress, 
-  Alert, 
-  Box,
-  Paper,
-  IconButton,
-  Tooltip
+  Box, Paper, CardContent, CircularProgress, Alert
 } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import FullscreenIcon from '@mui/icons-material/Fullscreen';
-const authToken = import.meta.env.VITE_GRAFANA_TOKEN;
-interface GrafanaDashboardProps {
-    dashboardUrl: string;
-    orgId?: string;
-    panelId?: string;
-    theme?: 'dark' | 'light';
-    height?: string;
-    refreshInterval?: number;
-    authToken: string;  // Add this line - notice it's required, not optional
+
+// Props interface for the GrafanaDashboard component
+interface GrafanaPanelProps {
+  panelId: string; // ID of the Grafana panel we want to display
+  title: string; // Title to show above the panel
 }
 
-const GrafanaDashboard: React.FC<GrafanaDashboardProps> = ({ 
-    dashboardUrl,
-    orgId = "1",
-    panelId = "1",
-    theme = "dark",
-    height = "400px",
-    refreshInterval = 0,  // 0 means no auto-refresh
-    authToken
-  }) => {
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [key, setKey] = useState<number>(0); // Used to force iframe refresh
+/**
+ * A React component that embeds a Grafana dashboard or panel using an iframe.
+ * Supports authentication, auto-refresh, fullscreen mode, and theme customization.
+ */
+const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
+  // State management
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
-    // Secure URL construction with validation
-    const constructUrl = useCallback(() => {
-        try {
-            const baseUrl = new URL(dashboardUrl);
-            const timeRange = {
-                from: 'now-6h',
-                to: 'now'
-            };
-
-            baseUrl.searchParams.set('orgId', orgId);
-        baseUrl.searchParams.set('from', 'now-6h');
-        baseUrl.searchParams.set('to', 'now');
-        baseUrl.searchParams.set('timezone', 'browser');
-        baseUrl.searchParams.set('var-interval', '$__auto');
-        baseUrl.searchParams.set('var-DS_PROMETHEUS', 'aecry96qo5m9sf');
-        baseUrl.searchParams.set('var-namespace', '');
-        baseUrl.searchParams.set('var-release', '');
-        baseUrl.searchParams.set('var-instance', 'postgres_exporter:9187');
-        baseUrl.searchParams.set('var-datname', '$__all');
-        baseUrl.searchParams.set('var-mode', '$__all');
-        baseUrl.searchParams.set('refresh', '10s');
-        baseUrl.searchParams.set('panelId', panelId);
-        baseUrl.searchParams.set('__feature.dashboardSceneSolo', 'true');
-        baseUrl.searchParams.set('auth_token', authToken);
-
-        // For embedding, we should use the embed view
-        baseUrl.pathname = baseUrl.pathname.replace('/d/', '/d-solo/');
-
-            return baseUrl.toString();
-        } catch (err) {
-            setError('Invalid dashboard URL provided');
-            return '';
-        }
-    }, [dashboardUrl, orgId, panelId, theme, authToken]);
-
-    // Auto-refresh logic
-    useEffect(() => {
-        if (!refreshInterval) return;
-        
-        const intervalId = setInterval(() => {
-            setKey(prev => prev + 1);
-        }, refreshInterval * 1000);
-
-        return () => clearInterval(intervalId);
-    }, [refreshInterval]);
-  
-    const handleIframeLoad = () => {
-      setIsLoading(false);
+  // Construct the URL for the Grafana dashboard
+  const constructUrl = useCallback(() => {
+    try {
+      // Base URL from our Docker setup
+      const baseUrl = new URL('http://localhost:3001'); 
+      // Set the path for the specific dashboard
+      baseUrl.pathname = `/d-solo/postgresql-overview/postgresql-overview`;// Ensure the URL is valid
+      // All the query parameters we need
+      const params = {
+        orgId: '1',
+        from: 'now-6h',
+        to: 'now',
+        theme: 'dark',
+        refresh: '5s',
+        panelId,
+        'auth.anonymous': 'true',
+        kiosk: 'true',
+        'var-database': 'postgres',
     };
-  
-    const handleIframeError = () => {
-      setError('Failed to load Grafana dashboard');
-      setIsLoading(false);
-    };
-  
-    const handleRefresh = () => {
-      setIsLoading(true);
-      setError(null);
-      setKey(prev => prev + 1); // Force iframe reload
-    };
-  
-    return (
-      <Paper elevation={2} sx={{ position: 'relative' }}>
-        <Box sx={{ 
-          p: 2, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          borderBottom: 1,
-          borderColor: 'divider'
-        }}>
-          {/* <Typography variant="h6">Metrics Dashboard</Typography> */}
-          <Box>
-            <Tooltip title="Refresh">
-              <IconButton onClick={handleRefresh} size="small">
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Fullscreen">
-              <IconButton size="small">
-                <FullscreenIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
-  
-        <CardContent>
-          {isLoading && (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
-              <CircularProgress />
-            </Box>
-          )}
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-  
-          <Box sx={{ 
-            position: 'relative',
-            height: height,
-            bgcolor: theme === 'dark' ? 'grey.900' : 'grey.100'
+    // Add all params to the URL
+    Object.entries(params).forEach(([key, value]) => {
+      baseUrl.searchParams.set(key, value);
+    });
+    return baseUrl.toString();
+  } catch (err) {
+    setError('Invalid dashboard URL');
+    return '';
+  }
+  }, [panelId]);
+
+  // Component render
+  return (
+    <Paper elevation={2} sx={{ bgcolor: '#181b1f'}}>
+      {/* Main content area */}
+      <CardContent>
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', 
+            alignItems: 'center', position: 'absolute',
+            inset: 0, bgcolor: 'rgba(255, 255, 255, 1)', zIndex: 2
           }}>
-            <iframe
-              key={key}
-              src={constructUrl()}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              style={{ position: 'absolute', top: 0, left: 0 }}
-            />
+            <CircularProgress />
           </Box>
-        </CardContent>
-      </Paper>
-    );
-  };
-  
-  export default GrafanaDashboard;
+        )}
+
+        {/* Error message */}
+        {error && (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Panel container */}
+        <Box sx={{ position: 'relative', height: '300px'}}>
+          {/* Grafana iframe */}
+          <iframe
+            id={`panel-${panelId}`}
+            src={constructUrl()}
+            style={{
+              border: 'none',
+              width: '100%',
+              height: '100%'
+            }}
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setError('Failed to load Grafana dashboard');
+              setIsLoading(false);
+            }}
+            title={`Grafana Panel - ${title}`}
+          />
+        </Box>
+      </CardContent>
+    </Paper>
+  );
+};
+
+export default GrafanaDashboard;

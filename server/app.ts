@@ -16,6 +16,14 @@ app.use(
 );
 app.use(express.json());
 
+//debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  next();
+});
+
 app.use('/api', apiRoutes);
 
 app.use('*', (req: Request, res: Response) => {

@@ -63,3 +63,11 @@ docker network prune
 
 Remove all dangling resources:
 docker system prune -a
+
+
+## Local Development Setup
+
+1. Clone the repository
+```bash
+git clone https://github.com/oslabs-beta/QueryHawk.git
+cd queryhawk
