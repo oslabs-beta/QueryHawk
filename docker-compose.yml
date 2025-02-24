@@ -38,6 +38,16 @@ services: # This section defines all the services (containers) we want to run
     networks:
       - queryhawk_monitoring_network # Uses the default network created by docker-compose
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://testuser:testpass123@test_user_db:5432/testdb?sslmode=disable
+    ports:
+      - '9187:9187'
+    networks:
+      - queryhawk_monitoring_network
+    depends_on:
+      - test_user_db
   # Express Backend - Handles our API and query monitoring
   backend:
     build:
