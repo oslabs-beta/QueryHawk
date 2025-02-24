@@ -15,24 +15,28 @@ services: # This section defines all the services (containers) we want to run
       - '54323:8000' # Supabase Studio - web interface for managing database
     environment:
       environment:
-      POSTGRES_PASSWORD: postgres123  # Default development password
+      POSTGRES_PASSWORD: postgres123 # Default development password
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
       # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       # Persist database data even when container restarts
       - supabase_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup. 
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup.
 
-  postgres_exporter:
-    image: prometheuscommunity/postgres-exporter
+  # Test database to simulate a user's external PostgreSQL instance
+  test_user_db:
+    image: postgres:13
     ports:
-      - '9187:9187'
+      - '5433:5432'
     environment:
-      DATA_SOURCE_NAME: ${DATABASE_URL}
-      #- DATA_SOURCE_NAME= ${DATA_SOURCE_NAME}
-    depends_on:
-      - supabase
+      POSTGRES_PASSWORD: testpass123
+      POSTGRES_USER: testuser
+      POSTGRES_DB: testdb
+    volumes:
+      - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
+    networks:
+      default: {} # Uses the default network created by docker-compose
 
   # Express Backend - Handles our API and query monitoring
   backend:
@@ -40,7 +44,7 @@ services: # This section defines all the services (containers) we want to run
       context: .
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
-      - '4002:4002'  # Changed to match ports # API will be available on localhost:4002
+      - '4002:4002' # Changed to match ports # API will be available on localhost:4002
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container
@@ -50,7 +54,7 @@ services: # This section defines all the services (containers) we want to run
       - /app/node_modules # Preserves container's node_modules
     environment:
       - PORT=4002
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${POSTGRES_URI}
       # - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
@@ -77,11 +81,12 @@ services: # This section defines all the services (containers) we want to run
     ports:
       - '9090:9090' # Prometheus web interface
     volumes:
-      # Configuration and data persistence
-      - ./prometheus:/etc/prometheus # Local config files
-      - prometheus_data:/prometheus # Stored metrics
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Mount your config file
+      - prometheus_data:/prometheus # For prometheus data
+      - prometheus_targets:/var/prometheus/postgres_targets
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
 
   otel-collector:
     image: otel/opentelemetry-collector
@@ -142,6 +147,8 @@ services: # This section defines all the services (containers) we want to run
   # Persistent storage for our services
 volumes:
   supabase_data: # Database storage
+  prometheus_config: #Prometheus configuration files
   prometheus_data: # Metrics storage
+  prometheus_targets: #Dynamic postgres exporter targets
   grafana_data: # Dashboard configurations
 
