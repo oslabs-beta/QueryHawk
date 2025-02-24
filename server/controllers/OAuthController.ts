@@ -2,13 +2,28 @@ import { Request, Response } from 'express';
 import fetch from 'node-fetch';
 import jwt from 'jsonwebtoken';
 import OAuthModel from '../models/OAuthModel';
-import { GithubTokenResponse, GithubUser, AuthenticatedUser } from '../types/auth';
+import {
+  GithubTokenResponse,
+  GithubUser,
+  AuthenticatedUser,
+} from '../types/auth';
 
 const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
 const githubClientId = process.env.GITHUB_CLIENT_ID;
+const jwtSecret = process.env.JWT_SECRET;
+
 interface CustomError extends Error {
   statusCode?: number;
 }
+
+interface DecodedToken {
+  userId: number;
+  username: string;
+  email: string;
+  iat: number;
+  exp: number;
+}
+
 class OAuthController {
   // Private method to handle errors consistently throughout the controller
   private createError(message: string, statusCode: number = 500): CustomError {
@@ -40,7 +55,7 @@ class OAuthController {
     console.log('📟 GitHub token response:', {
       status: tokenResponse.status,
       error: tokenData.error,
-      error_description: tokenData.error_description
+      error_description: tokenData.error_description,
     });
 
     if (tokenData.error) {
@@ -58,9 +73,7 @@ class OAuthController {
   }
 
   // Private method to fetch user data from GitHub using the access token
-  private async getGithubUser(
-    accessToken: string
-  ): Promise<GithubUser> {
+  private async getGithubUser(accessToken: string): Promise<GithubUser> {
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -86,6 +99,16 @@ class OAuthController {
       process.env.JWT_SECRET || '',
       { expiresIn: '24h' }
     );
+  }
+
+  // Public method to validate the JWT token
+  public validateToken(token: string): DecodedToken {
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as DecodedToken;
+      return decoded;
+    } catch (error) {
+      throw this.createError('Invalid token', 401);
+    }
   }
 
   // Public method to handle the OAuth callback
@@ -141,11 +164,11 @@ class OAuthController {
   public async getCurrentUser(userId: number): Promise<AuthenticatedUser> {
     try {
       const user = await OAuthModel.findUserById(userId);
-      
+
       if (!user) {
         throw this.createError('User not found', 404);
       }
-      
+
       return {
         id: user.id,
         username: user.username,

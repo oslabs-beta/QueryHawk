@@ -4,14 +4,14 @@ version: '3.7'
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
 #FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
 #and will need to add opentelemetry
-services: 
+services:
   # Express Backend - Handles our API and query monitoring
   backend:
     build:
       context: .
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
-      - '4002:4001' # API will be available on localhost:4002
+      - '4002:4002' # API will be available on localhost:4002
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container
@@ -24,7 +24,7 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=${DATABASE_URL}
-      - PORT=4001
+      - PORT=4002
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - CORS_ORIGIN=http://localhost:5173

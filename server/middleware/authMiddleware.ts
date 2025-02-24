@@ -5,7 +5,7 @@ export const authenticateUser = (
   req: Request,
   res: Response,
   next: NextFunction
-) : void => {
+): void => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -19,10 +19,14 @@ export const authenticateUser = (
       return;
     }
 
-    const user = OAuthController.validateToken(token);
-    res.locals.user = user; // Store user info for route handlers
+    const decodedToken = OAuthController.validateToken(token);
+    // const user = OAuthController.validateToken(token);
+    // res.locals.user = user; // Store user info for route handlers
+    res.locals.user = decodedToken;
+    res.locals.userId = decodedToken.userId;
     next();
   } catch (error) {
+    console.error('Authentication error:', error);
     res.status(401).json({ error: 'Invalid token' });
     return;
   }
