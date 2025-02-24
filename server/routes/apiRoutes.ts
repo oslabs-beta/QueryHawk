@@ -32,6 +32,12 @@ router.post('/auth/logout', authenticateUser, (req: Request, res: Response): voi
   }
 });
 
+// Add monitoring routes
+router.post('/connect', monitoringController.setupMonitoring);
+
+// Add the metrics endpoint
+router.get('/metrics', monitoringController.getMetrics);
+
 // ===== Protected API Routes =====
 router.post(
   '/query-metrics',
