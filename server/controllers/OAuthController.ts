@@ -37,6 +37,12 @@ class OAuthController {
 
     const tokenData = (await tokenResponse.json()) as GithubTokenResponse;
 
+    console.log('📟 GitHub token response:', {
+      status: tokenResponse.status,
+      error: tokenData.error,
+      error_description: tokenData.error_description
+    });
+
     if (tokenData.error) {
       throw this.createError(
         tokenData.error_description || 'Failed to exchange code for token',
@@ -86,6 +92,7 @@ class OAuthController {
   public async handleCallback(req: Request, res: Response): Promise<void> {
     try {
       const { code, provider } = req.body;
+      console.log('🐸 Received request body:', req.body);
 
       // Validate input
       if (!code) {
@@ -130,17 +137,26 @@ class OAuthController {
       });
     }
   }
-
-  // Optional: Method to validate tokens for protected routes
-  public validateToken(token: string): AuthenticatedUser {
+  // Added method to get the current user
+  public async getCurrentUser(userId: number): Promise<AuthenticatedUser> {
     try {
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || ''
-      ) as AuthenticatedUser;
-      return decoded;
-    } catch {
-      throw this.createError('Invalid token', 401);
+      const user = await OAuthModel.findUserById(userId);
+      
+      if (!user) {
+        throw this.createError('User not found', 404);
+      }
+      
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.first_name,
+        // Since we don't have GitHub data here, we use a default avatar or null
+        avatarUrl: null,
+      };
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      throw error;
     }
   }
 }

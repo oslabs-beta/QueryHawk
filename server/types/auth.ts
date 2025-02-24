@@ -19,6 +19,9 @@ export interface GithubTokenResponse {
     username: string;
     email: string;
     first_name: string;
+    last_name: string;
+    github_id?: string;
+    user_id?: string;
   }
   
   export interface AuthenticatedUser {
@@ -26,5 +29,5 @@ export interface GithubTokenResponse {
     username: string;
     email: string;
     name: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   }

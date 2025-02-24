@@ -4,30 +4,7 @@ version: '3.7'
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
 #FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
 #and will need to add opentelemetry
-services: # This section defines all the services (containers) we want to run
-  # Supabase - Our main database and auth service
-  # Runs PostgreSQL and provides real-time capabilities
-  #format is host_port:container_port
-  supabase:
-    image: postgres:13 # Official Supabase Docker image
-    ports:
-      - '54322:5432' # PostgreSQL database port
-      - '54323:8000' # Supabase Studio - web interface for managing database
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      # Persist database data even when container restarts
-      - supabase_data:/var/lib/postgresql/data
-
-  postgres_exporter:
-    image: prometheuscommunity/postgres-exporter
-    ports:
-      - '9187:9187'
-    environment:
-      - DATA_SOURCE_NAME=${SUPABASE_URI}
-    depends_on:
-      - supabase
-
+services: 
   # Express Backend - Handles our API and query monitoring
   backend:
     build:
@@ -42,17 +19,17 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
       - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
       - PORT=4001
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - CORS_ORIGIN=http://localhost:5173
       - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      - supabase # Ensures database starts first
-
+      - SUPABASE_URI=${SUPABASE_URI}
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
     #ports section maps ports from container to computer
@@ -128,6 +105,5 @@ services: # This section defines all the services (containers) we want to run
 
   # Persistent storage for our services
 volumes:
-  supabase_data: # Database storage
   prometheus_data: # Metrics storage
   grafana_data: # Dashboard configurations

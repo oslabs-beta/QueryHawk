@@ -15,19 +15,20 @@ const AuthCallback: React.FC = () => {
       try {
         const params = new URLSearchParams(location.search);
         const code = params.get('code');
-        console.log('Received GitHub code:', code);
+        console.log('📟 Received GitHub code:', code);
+        console.log('🕰️ Received GitHub code:', code, 'at:', new Date().toISOString());
 
         if (!code) {
           throw new Error('No authorization code received from GitHub');
         }
 
         // Make request to your backend
-        const response = await fetch('http://localhost:4001/api/auth/github/callback', {
+        const response = await fetch('http://localhost:4002/api/auth/github/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, provider: 'github' }),
           credentials: 'include',
         });
 

@@ -10,13 +10,12 @@ app.use(
   cors({
     origin: 'http://localhost:5173', // Your frontend's URL
     methods: ['GET', 'POST', 'DELETE', 'PUT'],
-    allowedHeaders: ['Content-Type'],
-    // credentials: true, // Allow cookies and credentials
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Allow cookies and credentials
   })
 );
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
 app.use('/', (req, res) => {

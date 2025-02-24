@@ -1,51 +1,146 @@
-import { Pool } from 'pg';
-import { GithubUser, DbUser } from '../types/auth';
+import pkg from 'pg';
+const { Pool } = pkg;
+import { GithubUser, DbUser } from '../types/auth.js';
 
-const pool = new Pool(); // Connection string is set in the environment variable
+// Initialize pool with Supabase configuration
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for Supabase connections
+  }
+});
+
+// Add connection error handling
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
 
 export class OAuthModel {
   async findOrCreateUser(githubUser: GithubUser): Promise<DbUser> {
-    // First try to find the user by email
-    const findResult = await pool.query(
-      'SELECT * FROM user_account WHERE email = $1',
-      [githubUser.email]
-    );
+    console.log('🔍 Connection string:', process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@'));
+    const client = await pool.connect();
+    
+    try {
+      // Debug database connection
+      console.log('🔌 Connected to database, running diagnostics...');
 
-    if (findResult.rows[0]) {
-      // Update existing user's information if needed
-      const updateResult = await pool.query(
-        `UPDATE user_account 
-         SET username = $1, first_name = $2
-         WHERE email = $3
-         RETURNING id, username, email, first_name`,
-        [githubUser.login, githubUser.name, githubUser.email]
+      // Get database name
+      const dbNameResult = await client.query('SELECT current_database()');
+      console.log('📊 Current database:', dbNameResult.rows[0].current_database);
+
+      // Get schema search path
+      const schemaResult = await client.query('SHOW search_path');
+      console.log('🔍 Search path:', schemaResult.rows[0].search_path);
+
+      // Check if table exists
+      const tableCheckResult = await client.query(`
+        SELECT EXISTS (
+          SELECT 1 
+          FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'user_account'
+        );
+      `);
+      console.log('📋 Does user_account table exist?', tableCheckResult.rows[0].exists);
+
+      // Get current user
+      const userResult = await client.query('SELECT current_user');
+      console.log('👤 Connected as user:', userResult.rows[0].current_user);
+
+      // List tables in public schema
+      const tablesResult = await client.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+      `);
+      console.log('📑 Tables in public schema:', tablesResult.rows.map(r => r.table_name));
+      
+      // End of Debug database connection
+      await client.query('BEGIN');
+
+      // First try to find the user by GitHub ID or email
+      console.log('🔍 Attempting to find user with GitHub ID:', githubUser.id.toString());
+      const findResult = await client.query(
+        'SELECT * FROM user_account WHERE github_id = $1 OR email = $2',
+        [githubUser.id.toString(), githubUser.email]
       );
-      return updateResult.rows[0];
+      console.log('✅ Find result:', findResult.rows);
+      if (findResult.rows[0]) {
+        // Update existing user's information
+        console.log('✅ Found existing user, updating...');
+        const updateResult = await client.query(
+          `UPDATE user_account 
+           SET username = $1, 
+               first_name = $2,
+               last_name = $3,
+               github_id = $4,
+               email = COALESCE($5, email)
+           WHERE id = $6
+           RETURNING id, username, email, first_name, last_name, github_id, user_id`,
+          [
+            githubUser.login,
+            githubUser.name?.split(' ')[0] || '',  // First name
+            githubUser.name?.split(' ').slice(1).join(' ') || '', // Last name
+            githubUser.id.toString(),
+            githubUser.email,
+            findResult.rows[0].id
+          ]
+        );
+        
+        await client.query('COMMIT');
+        return updateResult.rows[0];
+      }
+
+      // Create new user if not found
+      const insertResult = await client.query(
+        `INSERT INTO user_account (
+          username, 
+          email, 
+          password, 
+          first_name, 
+          last_name,
+          github_id,
+          created_at,
+          user_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, gen_random_uuid())  -- Use gen_random_uuid() since we can't use auth.uid() directly
+        RETURNING id, username, email, first_name, last_name, github_id, user_id`,
+        [
+          githubUser.login,
+          githubUser.email,
+          'github-oauth',
+          githubUser.name?.split(' ')[0] || '',
+          githubUser.name?.split(' ').slice(1).join(' ') || '',
+          githubUser.id.toString()
+        ]
+      );
+
+      await client.query('COMMIT');
+      return insertResult.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Database error:', error);
+      throw new Error('Failed to create or update user');
+    } finally {
+      client.release();
     }
-
-    // Create new user if not found
-    const insertResult = await pool.query(
-      `INSERT INTO user_account (username, email, password, first_name)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, username, email, first_name`,
-      [
-        githubUser.login, 
-        githubUser.email,
-        'github-oauth', // placeholder password since they logged in via GitHub
-        githubUser.name
-      ]
-    );
-
-    return insertResult.rows[0];
   }
 
   async findUserById(id: number): Promise<DbUser | null> {
-    const result = await pool.query(
-      'SELECT id, username, email, first_name FROM user_account WHERE id = $1',
-      [id]
-    );
-    return result.rows[0] || null;
+    try {
+      const result = await pool.query(
+        'SELECT id, username, email, first_name, last_name, github_id, user_id FROM user_account WHERE id = $1',
+        [id]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Database error:', error);
+      throw new Error('Failed to find user');
+    }
   }
 }
+
+
 
 export default new OAuthModel();
