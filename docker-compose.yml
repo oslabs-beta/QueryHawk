@@ -104,9 +104,12 @@ services:
       - ./:/app/ # Maps local code to container
       - /app/node_modules # Keeps node_modules in container
     environment:
-      - VITE_APP_BACKEND_URL=http://localhost:4002
-      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - NODE_ENV=development
+      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - VITE_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_GRAFANA_URL=http://localhost:3001 # Grafana URL
+    tty: true
+    stdin_open: true
     depends_on:
       - backend # Ensures API is available first
       - grafana # Ensures Grafana is available first
