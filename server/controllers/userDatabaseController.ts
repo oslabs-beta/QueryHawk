@@ -9,6 +9,7 @@ const appDbPool = new pg.Pool({
 type userDatabaseController = {
   fetchUserMetrics: RequestHandler;
   saveMetricsToDB: RequestHandler;
+  getSavedQueries: RequestHandler;
 };
 
 const userDatabaseController: userDatabaseController = {
@@ -17,11 +18,13 @@ const userDatabaseController: userDatabaseController = {
     res: Response,
     next: NextFunction
   ): Promise<void> => {
-    const { uri_string, query } = req.body;
+    const { queryName, uri_string, query } = req.body;
 
-    if (!uri_string || !query) {
-      console.log('Missing uri string or query.');
-      res.status(400).json({ message: 'uri string and query is required.' });
+    if (!queryName || !uri_string || !query) {
+      console.log('Missing query name, uri string, or query.');
+      res
+        .status(400)
+        .json({ message: 'query name, uri string and query is required.' });
       return;
     }
     const { Pool } = pg;
@@ -88,6 +91,7 @@ const userDatabaseController: userDatabaseController = {
 
       // console.log('Query Metrics:', metrics);
       res.locals.queryMetrics = metrics;
+      res.locals.queryName = queryName;
       res.locals.originalQuery = query;
       return next();
     } catch (err) {
@@ -107,20 +111,20 @@ const userDatabaseController: userDatabaseController = {
     next: NextFunction
   ): Promise<void> => {
     console.log('res.locals before check: ', res.locals);
-    const { queryMetrics, originalQuery } = res.locals; // Get metrics from previous middleware
+    const { queryName, originalQuery, queryMetrics } = res.locals; // Get metrics from previous middleware
     const userId = res.locals.userId;
 
-    if (!queryMetrics || !userId || !originalQuery) {
-      res
-        .status(400)
-        .json({ message: 'Metrics, userId, or query text are missing.' });
+    if (!queryName || !queryMetrics || !userId || !originalQuery) {
+      res.status(400).json({
+        message: 'Query name, Metrics, userId, or query text are missing.',
+      });
       return;
     }
 
     try {
       const queryResult = await appDbPool.query(
-        'INSERT INTO queries (query_text, user_id, created_at) VALUES ($1, $2, NOW()) RETURNING id',
-        [originalQuery, userId]
+        'INSERT INTO queries (query_name, query_text, user_id, created_at) VALUES ($1, $2, $3, NOW()) RETURNING id',
+        [queryName, originalQuery, userId]
       );
 
       const queryId = queryResult.rows[0].id;
@@ -164,6 +168,76 @@ const userDatabaseController: userDatabaseController = {
         log: 'Error in saveMetricsToDB middleware',
         status: 500,
         message: { err: 'Failed to save metrics to the database.' },
+      });
+    }
+  },
+  // create getSavedQueries method
+  getSavedQueries: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = res.locals.userId;
+
+      if (!userId) {
+        res.status(400).json({ message: 'User ID is required' });
+        return;
+      }
+
+      // Query to get all saved queries with their metrics for this user
+      const queryResult = await appDbPool.query(
+        `
+        SELECT 
+          q.id,
+          q.query_name AS "queryName",
+          q.query_text AS "queryText",
+          q.created_at AS "createdAt",
+          m.execution_time AS "executionTime",
+          m.planning_time AS "planningTime",
+          m.rows_returned AS "rowsReturned",
+          m.actual_loops AS "actualLoops",
+          m.shared_hit_blocks AS "sharedHitBlocks",
+          m.shared_read_blocks AS "sharedReadBlocks",
+          m.work_mem AS "workMem",
+          m.cache_hit_ratio AS "cacheHitRatio",
+          m.startup_cost AS "startupCost",
+          m.total_cost AS "totalCost"
+        FROM queries q
+        JOIN metrics m ON q.id = m.query_id
+        WHERE q.user_id = $1
+        ORDER BY q.created_at DESC
+      `,
+        [userId]
+      );
+
+      // Transform results to match frontend expected format
+      const savedQueries = queryResult.rows.map((row) => ({
+        id: row.id,
+        queryName: row.queryName,
+        queryText: row.queryText,
+        createdAt: row.createdAt,
+        metrics: {
+          executionTime: parseFloat(row.executionTime),
+          planningTime: parseFloat(row.planningTime),
+          rowsReturned: parseInt(row.rowsReturned),
+          actualLoops: parseInt(row.actualLoops),
+          sharedHitBlocks: parseInt(row.sharedHitBlocks),
+          sharedReadBlocks: parseInt(row.sharedReadBlocks),
+          workMem: parseInt(row.workMem) || 0,
+          cacheHitRatio: parseFloat(row.cacheHitRatio),
+          startupCost: parseFloat(row.startupCost),
+          totalCost: parseFloat(row.totalCost),
+        },
+      }));
+
+      res.status(200).json(savedQueries);
+    } catch (err) {
+      console.error('Error fetching saved queries', err);
+      return next({
+        log: 'Error in getSavedQueries middleware',
+        status: 500,
+        message: { err: 'Failed to fetch saved queries.' },
       });
     }
   },

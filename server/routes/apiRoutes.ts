@@ -54,4 +54,11 @@ router.post(
   userDatabaseController.saveMetricsToDB
 );
 
+// Add the route to get saved queries
+router.get(
+  '/saved-queries',
+  authenticateUser,
+  userDatabaseController.getSavedQueries
+);
+
 export default router;
