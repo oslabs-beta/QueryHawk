@@ -54,44 +54,4 @@ router.post(
   userDatabaseController.saveMetricsToDB
 );
 
-// Get user metrics
-router.get(
-  '/user/metrics',
-  authenticateUser,
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const userId = res.locals.userId;
-      const metrics = await userDatabaseController.getUserMetrics(userId);
-
-      res.status(200).json({
-        success: true,
-        data: metrics,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Dashboard data
-router.get(
-  '/dashboard',
-  authenticateUser,
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const userId = res.locals.userId;
-      const dashboardData = await userDatabaseController.getDashboardData(
-        userId
-      );
-
-      res.status(200).json({
-        success: true,
-        data: dashboardData,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
 export default router;
