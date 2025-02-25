@@ -4,25 +4,11 @@ version: '3.7'
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
 #FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
 #and will need to add opentelemetry
+
 services: # This section defines all the services (containers) we want to run
   # Supabase - Our main database and auth service
   # Runs PostgreSQL and provides real-time capabilities
   #format is host_port:container_port
-  supabase:
-    image: postgres:13 # Official Supabase Docker image
-    ports:
-      - '54322:5432' # PostgreSQL database port
-      - '54323:8000' # Supabase Studio - web interface for managing database
-    environment:
-      environment:
-      POSTGRES_PASSWORD: postgres123 # Default development password
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
-      # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      # Persist database data even when container restarts
-      - supabase_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql #Create an initialization script for the database that will run on first startup.
 
   # Test database to simulate a user's external PostgreSQL instance
   test_user_db:
@@ -48,13 +34,14 @@ services: # This section defines all the services (containers) we want to run
       - queryhawk_monitoring_network
     depends_on:
       - test_user_db
+
   # Express Backend - Handles our API and query monitoring
   backend:
     build:
       context: .
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
-      - '4002:4002' # Changed to match ports # API will be available on localhost:4002
+      - '4002:4002' # API will be available on localhost:4002
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container
@@ -62,16 +49,20 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
+    env_file:
+      - .env
     environment:
       - PORT=4002
       - DATABASE_URL=${POSTGRES_URI}
-      # - SUPABASE_URL=http://supabase:8000 # Internal Docker network URL
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - CORS_ORIGIN=http://localhost:5173
+      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
     networks:
       - queryhawk_monitoring_network
-    depends_on:
-      - supabase # Ensures database starts first
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
@@ -150,6 +141,8 @@ services: # This section defines all the services (containers) we want to run
       - ./:/app/ # Maps local code to container
       - /app/node_modules # Keeps node_modules in container
     environment:
+      - NODE_ENV=development
+      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - VITE_BACKEND_URL=http://localhost:4002 # Backend API URL
       - VITE_GRAFANA_URL=http://localhost:3001 # Grafana URL
     tty: true
@@ -164,7 +157,6 @@ networks:
     driver: bridge
   # Persistent storage for our services
 volumes:
-  supabase_data: # Database storage
   prometheus_config: #Prometheus configuration files
   prometheus_data: # Metrics storage
   prometheus_targets: #Dynamic postgres exporter targets

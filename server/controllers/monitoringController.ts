@@ -40,7 +40,7 @@ const dbConnectionGauge = new promClient.Gauge({
   const dbBlocksRead = new promClient.Gauge({
     name: "pg_stat_database_blks_read",
     help: "Number of blocks read from disk",
-    labelNames: ["datname"],  // Already correct
+    labelNames: ["datname"],
   });
 
 // Register all metrics
@@ -62,6 +62,9 @@ async function collectMetrics(pool: pkg.Pool, databaseUrl: string) {
       // Get current database name
       const dbNameResult = await client.query('SELECT current_database() as dbname');
       const dbName = dbNameResult.rows[0]?.dbname || 'postgres';
+
+      console.log("Currently collecting metrics from database:", dbName);
+      console.log("Using connection URL:", databaseUrl.replace(/:[^:@]+@/, ":****@"));
 
       // Get transaction rate
       const txnResult = await client.query(`
@@ -154,6 +157,9 @@ const monitoringController = {
     next: NextFunction
   ): Promise<void> => {
     const { databaseUrl } = req.body;
+    console.log("API ENDPOINT HIT");
+    console.log("Setting up monitoring for:", databaseUrl);
+    console.log("Request received with database URL:", databaseUrl.replace(/:[^:@]+@/, ":****@"));
     console.log("Attempting to connect to database...");
 
     if (!databaseUrl) {
@@ -181,7 +187,10 @@ const monitoringController = {
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
-        ssl: { rejectUnauthorized: false },
+        ssl: {
+          rejectUnauthorized: false,
+          sslmode: 'require'
+        }
       };
 
       console.log("Connecting with config:", {
@@ -251,7 +260,7 @@ const monitoringController = {
       // Set correct content type for Prometheus
       res.set("Content-Type", "text/plain; version=0.0.4");
 
-      const metrics = await register.metrics();
+      const metrics = await register.metrics(); // Get metrics from the registry
       res.end(metrics);
     } catch (err) {
       console.error("Error collecting metrics:", err);

@@ -12,6 +12,7 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy # How Grafana accesses the data source
+    uid: prometheus
     url: http://prometheus:9090 # Internal Docker network URL
     isDefault: true # Make this the default data source
     jsonData:
