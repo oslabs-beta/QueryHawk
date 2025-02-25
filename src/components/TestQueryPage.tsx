@@ -102,7 +102,7 @@ const TestQueryPage: React.FC = () => {
 
     try {
       // checks authentication
-      if (!checkAuthentication) {
+      if (!checkAuthentication()) {
         throw Error('Authentication required. Please log in to continue');
       }
       const token = localStorage.getItem('authToken');
