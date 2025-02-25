@@ -49,6 +49,8 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+      - prometheus_targets:/var/prometheus/postgres_targets
     env_file:
       - .env
     environment:
