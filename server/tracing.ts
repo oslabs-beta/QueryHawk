@@ -22,9 +22,9 @@ const sdk = new NodeSDK({
   }),
 
   // Trace Exporter: Configures where to send the traces
-  // In this case, sending to Jaeger's OTLP HTTP endpoint
+  // In this case, sending to big Docker file, specifically to otel-collector service which represents opentelemetry
   traceExporter: new OTLPTraceExporter({
-    url: 'http://localhost:4318/v1/traces', // Jaeger's default OTLP endpoint
+    url: 'http://otel-collector:4318/v1/traces', // Points to Docker service
   }),
 
   // Span Processor: Handles each span (trace segment) as it's completed
@@ -55,7 +55,6 @@ const sdk = new NodeSDK({
 
 // Start the SDK and log status
 sdk.start();
-// cant use .then because start() does not return a promise
 console.log('Tracing initialized');
 
 // shutdown handler
@@ -87,3 +86,9 @@ export default sdk;
 //     // What to trace automatically? - Sets up automatic tracking
 //     instrumentations: [...]
 // });
+
+//the flow is:
+// Your App (tracing.ts)
+//     → OpenTelemetry Collector (otel-config.yml)
+//         → Jaeger (for traces)
+//         → Prometheus (for metrics)

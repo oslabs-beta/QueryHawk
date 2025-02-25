@@ -1,0 +1,50 @@
+# Q: how does this file relate to other files?
+# A: Your App → Collector → Monitoring Tools
+#   (tracing.ts) (otel-config.yml) (Jaeger/Prometheus)
+# relevant documentation: https://opentelemetry.io/docs/collector/configuration/
+# Create folder: opentelemetry/otel-config.yml
+
+# Receivers: Where data comes in
+receivers:
+  otlp: # OpenTelemetry protocol
+    protocols:
+      grpc: # For applications using gRPC
+        endpoint: 0.0.0.0:4316 # Port where it listens
+        #i commented out tls, it's a security encryption feature i dunno if we need?
+        # tls:
+        #   cert_file: cert.pem
+        #   key_file: cert-key.pem
+      http: # For applications using HTTP
+        endpoint: 0.0.0.0:4319 # Port where it listens
+
+# Processors: What to do with the data before sending
+processors:
+  batch: # Groups data into batches for efficiency
+    timeout: 1s # Send at least every second
+    send_batch_size: 1024 # Or when we have 1024 items
+
+# Exporters: Where to send the processed data
+exporters:
+  otlp: # Sends traces to opentel - jaeger
+    endpoint: jaeger:4317 # Docker service name & port
+    tls:
+      insecure: true # Dev setup - don't need security
+
+  prometheus: # Sends metrics to Prometheus
+    endpoint: '0.0.0.0:8889' # Where Prometheus can collect metrics
+    namespace: 'your_app' # Groups metrics under this name
+
+# Service: How everything connects together
+#pipeline is where pipelines are configured and can be of types traces, metrics, or logs
+#a pipeline is a set of receivers, processors, and exporters, each defined earlier in the file
+service:
+  pipelines:
+    traces: # Pipeline for trace data
+      receivers: [otlp] # Get data from receivers
+      processors: [batch] # Process it
+      exporters: [otlp] # Send to Jaeger
+
+    metrics: # Pipeline for metrics
+      receivers: [otlp] # Get data from receivers
+      processors: [batch] # Process it
+      exporters: [prometheus] # Send to Prometheus

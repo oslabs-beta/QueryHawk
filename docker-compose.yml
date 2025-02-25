@@ -1,6 +1,35 @@
 version: '3.7'
 
-services: # This section defines all the services (containers) we want to run
+#ALL VOLUMES AND COMMANDS AND BUILDS WILL NEED TO BE UPDATED WITH ACCURATE
+#LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
+#FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
+#and will need to add opentelemetry
+services:
+  # Express Backend - Handles our API and query monitoring
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
+    ports:
+      - '4002:4002' # API will be available on localhost:4002
+    volumes:
+      # All these volume mappings enable development with hot reloading
+      - ./server:/app/server # Maps local server code to container
+      - ./types:/app/types # Maps local types directory for TypeScript types
+      - ./package.json:/app/package.json # Maps package.json for npm commands
+      - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
+      - /app/node_modules # Preserves container's node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=4002
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - CORS_ORIGIN=http://localhost:5173
+      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_URI=${SUPABASE_URI}
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
     #ports section maps ports from container to computer
@@ -14,3 +43,79 @@ services: # This section defines all the services (containers) we want to run
       - '4318:4318' # OTLP HTTP
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+
+  # Prometheus - Collects and stores our metrics
+  prometheus:
+    image: prom/prometheus # Official Prometheus image
+    ports:
+      - '9090:9090' # Prometheus web interface
+    volumes:
+      # Configuration and data persistence
+      - ./prometheus:/etc/prometheus # Local config files
+      - prometheus_data:/prometheus # Stored metrics
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  otel-collector:
+    image: otel/opentelemetry-collector
+    ports:
+      - '4316:4316' # OTLP gRPC receiver
+      - '4319:4319' # OTLP HTTP receiver
+    volumes:
+      #left side is file in my project folder and right is where it appears in the container
+      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
+    command: ['--config=/etc/otel/config.yml']
+    depends_on:
+      - jaeger
+      - prometheus
+
+  # Grafana - Creates dashboards from our metrics
+  grafana:
+    image: grafana/grafana # Official Grafana image
+    ports:
+      - '3001:3000' # Dashboard available on localhost:3001
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_CORS_ENABLED=true
+      - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      # Persist dashboard configurations and data
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus # Needs Prometheus to start first
+
+  # React Frontend - Our user interface
+  frontend:
+    build:
+      context: . # This should be where your frontend Dockerfile is
+      dockerfile: src/Dockerfile # Path to your development Dockerfile
+    ports:
+      - '5173:5173' # Website available on localhost:3000
+    volumes:
+      # Hot reloading for development
+      - ./:/app/ # Maps local code to container
+      - /app/node_modules # Keeps node_modules in container
+    environment:
+      - NODE_ENV=development
+      - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - VITE_BACKEND_URL=http://localhost:4002 # Backend API URL
+      - VITE_GRAFANA_URL=http://localhost:3001 # Grafana URL
+    tty: true
+    stdin_open: true
+    depends_on:
+      - backend # Ensures API is available first
+      - grafana # Ensures Grafana is available first
+
+  # Persistent storage for our services
+volumes:
+  prometheus_data: # Metrics storage
+  grafana_data: # Dashboard configurations
+

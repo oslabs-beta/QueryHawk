@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Dashboard Providers Configuration
+# Defines how Grafana should load and manage dashboards
+providers:
+  - name: 'QueryHawk' # Unique name for the provider
+    orgId: 1 # Organization ID in Grafana
+    type: file # Provider type - loads dashboards from files
+    disableDeletion: false # Allow dashboard deletion
+    allowUiUpdates: true # Allow editing dashboards through the UI
+    options:
+     # Path where dashboard JSON files are stored
+      path: /var/lib/grafana/dashboards
+      # Create folders based on dashboard file directory structure
+      foldersFromFilesStructure: true
