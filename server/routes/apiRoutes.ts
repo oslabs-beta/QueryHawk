@@ -86,5 +86,9 @@ router.get(
   }
 );
 
+// Add monitoring routes
+router.post('/connect', monitoringController.setupMonitoring);
 
+// Add the metrics endpoint
+router.get('/metrics', monitoringController.getMetrics);
 export default router;
