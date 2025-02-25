@@ -11,29 +11,29 @@ services: # This section defines all the services (containers) we want to run
   #format is host_port:container_port
 
   # Test database to simulate a user's external PostgreSQL instance
-  test_user_db:
-    image: postgres:13
-    ports:
-      - '5433:5432'
-    environment:
-      POSTGRES_PASSWORD: testpass123
-      POSTGRES_USER: testuser
-      POSTGRES_DB: testdb
-    volumes:
-      - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
-    networks:
-      - queryhawk_monitoring_network # Uses the default network created by docker-compose
+  # test_user_db:
+  #   image: postgres:13
+  #   ports:
+  #     - '5433:5432'
+  #   environment:
+  #     POSTGRES_PASSWORD: testpass123
+  #     POSTGRES_USER: testuser
+  #     POSTGRES_DB: testdb
+  #   volumes:
+  #     - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
+  #   networks:
+  #     - queryhawk_monitoring_network # Uses the default network created by docker-compose
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter
-    environment:
-      - DATA_SOURCE_NAME=postgresql://testuser:testpass123@test_user_db:5432/testdb?sslmode=disable
-    ports:
-      - '9187:9187'
-    networks:
-      - queryhawk_monitoring_network
-    depends_on:
-      - test_user_db
+  # postgres-exporter:
+  #   image: prometheuscommunity/postgres-exporter
+  #   environment:
+  #     - DATA_SOURCE_NAME=postgresql://testuser:testpass123@test_user_db:5432/testdb?sslmode=disable
+  #   ports:
+  #     - '9187:9187'
+  #   networks:
+  #     - queryhawk_monitoring_network
+  #   depends_on:
+  #     - test_user_db
 
   # Express Backend - Handles our API and query monitoring
   backend:
@@ -93,18 +93,18 @@ services: # This section defines all the services (containers) we want to run
     networks:
       - queryhawk_monitoring_network
 
-  otel-collector:
-    image: otel/opentelemetry-collector
-    ports:
-      - '4316:4316' # OTLP gRPC receiver
-      - '4319:4319' # OTLP HTTP receiver
-    volumes:
-      #left side is file in my project folder and right is where it appears in the container
-      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-    command: ['--config=/etc/otel/config.yml']
-    depends_on:
-      - jaeger
-      - prometheus
+  # otel-collector:
+  #   image: otel/opentelemetry-collector
+  #   ports:
+  #     - '4316:4316' # OTLP gRPC receiver
+  #     - '4319:4319' # OTLP HTTP receiver
+  #   volumes:
+  #     #left side is file in my project folder and right is where it appears in the container
+  #     - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
+  #   command: ['--config=/etc/otel/config.yml']
+  #   depends_on:
+  #     - jaeger
+  #     - prometheus
 
   # Grafana - Creates dashboards from our metrics
   grafana:
