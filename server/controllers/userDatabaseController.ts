@@ -24,6 +24,9 @@ const userDatabaseController: userDatabaseController = {
       console.log('Connecting to users database...');
       const pool = new Pool({
         connectionString: uri_string,
+        ssl: {
+          rejectUnauthorized: false, // Required for Supabase connections
+        },
       });
 
       // const result = await pool.query(`EXPLAIN ANALYZE ${query}`);
