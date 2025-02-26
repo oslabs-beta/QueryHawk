@@ -1,11 +1,11 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import pg from 'pg';
+import monitoringController from './monitoringController';
 
 // Creating a pool for our app database to save metrics.
 const appDbPool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
-import monitoringController from './monitoringController';
 
 type userDatabaseController = {
   fetchUserMetrics: RequestHandler;
@@ -99,7 +99,7 @@ const userDatabaseController: userDatabaseController = {
         cacheHitRatio: metrics.cacheHitRatio,
       });
 
-      console.log('Query Metrics:', metrics);
+      // console.log('Query Metrics:', metrics);
       res.locals.queryMetrics = metrics;
       res.locals.queryName = queryName;
       res.locals.originalQuery = query;
