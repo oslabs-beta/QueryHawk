@@ -287,22 +287,6 @@ const QueryMonitor: React.FC = () => {
           {/* Dashboard Content */}
           {isConnected && (
             <>
-              {/* Traces Section */}
-              <Box sx={{ mt: 4, mb: 3 }}>
-                <Typography variant='h5' fontWeight='500' sx={{ mb: 3 }}>
-                  Query Traces
-                </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <JaegerDashboard
-                      title='Recent Traces'
-                      serviceName='sql-optimizer'
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Divider sx={{ my: 4 }} />
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <GrafanaDashboard panelId='1' title='Transaction Rate' />
@@ -338,6 +322,21 @@ const QueryMonitor: React.FC = () => {
                   <GrafanaDashboard panelId='10' title='Long-Running Queries' />
                 </Grid>
               </Grid>
+              <Divider sx={{ my: 4 }} />
+              {/* Traces Section */}
+              <Box sx={{ mt: 4, mb: 3 }}>
+                <Typography variant='h5' fontWeight='500' sx={{ mb: 3 }}>
+                  Query Traces
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <JaegerDashboard
+                      title='Recent Traces'
+                      serviceName='sql-optimizer'
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
             </>
           )}
         </Container>
