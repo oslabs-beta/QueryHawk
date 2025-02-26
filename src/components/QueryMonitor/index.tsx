@@ -284,10 +284,37 @@ const QueryMonitor: React.FC = () => {
           {isConnected && (
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <GrafanaDashboard panelId='1' title='Transaction Rate' />
+                <GrafanaDashboard panelId="1" title="Transaction Rate" />
               </Grid>
               <Grid item xs={12} md={6}>
-                <GrafanaDashboard panelId='2' title='Cache Hit Ratio' />
+                <GrafanaDashboard panelId="2" title="Cache Hit Ratio" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="3" title="Active Connections" />
+              </Grid>
+              {/* <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="4" title="Query Execution Time" />
+              </Grid> */}
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="5" title="Tuple Operations" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="6" title="Lock Metrics" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="7" title="I/O Statistics" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="8" title="Index Usage" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard
+                  panelId="9"
+                  title="Transaction Commits vs Rollbacks"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="10" title="Long-Running Queries" />
               </Grid>
             </Grid>
           )}
