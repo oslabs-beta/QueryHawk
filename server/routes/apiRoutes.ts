@@ -105,7 +105,6 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = res.locals.userId;
-
       await cleanupExporter(userId.toString());
 
       res.status(200).json({
