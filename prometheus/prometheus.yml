@@ -23,16 +23,27 @@ scrape_configs:
   - job_name: 'express'
     metrics_path: '/api/metrics'
     static_configs:
-      - targets: ['backend:4002'] # Uses Docker service name.Prometheus scrapes metrics from the backend on port 4002 (host port). this wasa backend:4001 but was not working for me (bryan)
+      - targets: ['queryhawk-backend-1:4002']
+      # - targets: ['backend:4002'] # Uses Docker service name.Prometheus scrapes metrics from the backend on port 4002 (host port). this wasa backend:4001 but was not working for me (bryan)
 
   # Configure Prometheus to scrape metrics from PostgreSQL
   # The postgres_exporter translates database-specific metrics
   # into a format Prometheus can understand and visualize
   # We are scrape_config 2 times might need to remove this one.
 
-  - job_name: 'postgresql'
-    static_configs:
-      - targets: ['postgres_exporter:9187']
+  # - job_name: 'postgresql'
+  #   static_configs:
+  #     # - targets: ['test_user_db:9187']
+  #     - targets: ['queryhawk-postgres-exporter-1:9187']
+  - job_name: 'postgres_exporter'
+    file_sd_configs:
+      - files:
+          - /var/prometheus/postgres_targets/*.yml
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*)'
+        target_label: 'instance'
+        replacement: '$1'
 
   # have to change jaeger
   # OpenTelemetry collector
