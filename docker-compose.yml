@@ -92,6 +92,7 @@ services: # This section defines all the services (containers) we want to run
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-lifecycle'
+    container_name: queryhawk-prometheus-1
     networks:
       - queryhawk_monitoring_network
 
@@ -130,6 +131,8 @@ services: # This section defines all the services (containers) we want to run
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus # Needs Prometheus to start first
+    networks:
+      - queryhawk_monitoring_network
 
   # React Frontend - Our user interface
   frontend:
@@ -152,6 +155,8 @@ services: # This section defines all the services (containers) we want to run
     depends_on:
       - backend # Ensures API is available first
       - grafana # Ensures Grafana is available first
+    networks:
+      - queryhawk_monitoring_network
 
 networks:
   queryhawk_monitoring_network:
