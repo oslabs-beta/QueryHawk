@@ -292,9 +292,9 @@ const QueryMonitor: React.FC = () => {
               <Grid item xs={12} md={6}>
                 <GrafanaDashboard panelId="3" title="Active Connections" />
               </Grid>
-              <Grid item xs={12} md={6}>
+              {/* <Grid item xs={12} md={6}>
                 <GrafanaDashboard panelId="4" title="Query Execution Time" />
-              </Grid>
+              </Grid> */}
               <Grid item xs={12} md={6}>
                 <GrafanaDashboard panelId="5" title="Tuple Operations" />
               </Grid>
