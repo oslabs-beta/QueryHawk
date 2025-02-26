@@ -11,29 +11,29 @@ services: # This section defines all the services (containers) we want to run
   #format is host_port:container_port
 
   # Test database to simulate a user's external PostgreSQL instance
-  test_user_db:
-    image: postgres:13
-    ports:
-      - '5433:5432'
-    environment:
-      POSTGRES_PASSWORD: testpass123
-      POSTGRES_USER: testuser
-      POSTGRES_DB: testdb
-    volumes:
-      - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
-    networks:
-      - queryhawk_monitoring_network # Uses the default network created by docker-compose
+  # test_user_db:
+  #   image: postgres:13
+  #   ports:
+  #     - '5433:5432'
+  #   environment:
+  #     POSTGRES_PASSWORD: testpass123
+  #     POSTGRES_USER: testuser
+  #     POSTGRES_DB: testdb
+  #   volumes:
+  #     - ./test-init.sql:/docker-entrypoint-initdb.d/test-init.sql
+  #   networks:
+  #     - queryhawk_monitoring_network # Uses the default network created by docker-compose
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter
-    environment:
-      - DATA_SOURCE_NAME=postgresql://testuser:testpass123@test_user_db:5432/testdb?sslmode=disable
-    ports:
-      - '9187:9187'
-    networks:
-      - queryhawk_monitoring_network
-    depends_on:
-      - test_user_db
+  # postgres-exporter:
+  #   image: prometheuscommunity/postgres-exporter
+  #   environment:
+  #     - DATA_SOURCE_NAME=postgresql://testuser:testpass123@test_user_db:5432/testdb?sslmode=disable
+  #   ports:
+  #     - '9187:9187'
+  #   networks:
+  #     - queryhawk_monitoring_network
+  #   depends_on:
+  #     - test_user_db
 
   # Express Backend - Handles our API and query monitoring
   backend:
@@ -49,6 +49,8 @@ services: # This section defines all the services (containers) we want to run
       - ./package.json:/app/package.json # Maps package.json for npm commands
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+      - prometheus_targets:/var/prometheus/postgres_targets
     env_file:
       - .env
     environment:
@@ -90,21 +92,22 @@ services: # This section defines all the services (containers) we want to run
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-lifecycle'
+    container_name: queryhawk-prometheus-1
     networks:
       - queryhawk_monitoring_network
 
-  otel-collector:
-    image: otel/opentelemetry-collector
-    ports:
-      - '4316:4316' # OTLP gRPC receiver
-      - '4319:4319' # OTLP HTTP receiver
-    volumes:
-      #left side is file in my project folder and right is where it appears in the container
-      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-    command: ['--config=/etc/otel/config.yml']
-    depends_on:
-      - jaeger
-      - prometheus
+  # otel-collector:
+  #   image: otel/opentelemetry-collector
+  #   ports:
+  #     - '4316:4316' # OTLP gRPC receiver
+  #     - '4319:4319' # OTLP HTTP receiver
+  #   volumes:
+  #     #left side is file in my project folder and right is where it appears in the container
+  #     - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
+  #   command: ['--config=/etc/otel/config.yml']
+  #   depends_on:
+  #     - jaeger
+  #     - prometheus
 
   # Grafana - Creates dashboards from our metrics
   grafana:
@@ -128,6 +131,8 @@ services: # This section defines all the services (containers) we want to run
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus # Needs Prometheus to start first
+    networks:
+      - queryhawk_monitoring_network
 
   # React Frontend - Our user interface
   frontend:
@@ -150,6 +155,8 @@ services: # This section defines all the services (containers) we want to run
     depends_on:
       - backend # Ensures API is available first
       - grafana # Ensures Grafana is available first
+    networks:
+      - queryhawk_monitoring_network
 
 networks:
   queryhawk_monitoring_network:

@@ -1,6 +1,7 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 // import { ServerError } from '../../types/types.ts';
 import pg from 'pg';
+import monitoringController from './monitoringController';
 
 type userDatabaseController = {
   connectDB: RequestHandler;
@@ -45,6 +46,9 @@ const userDatabaseController: userDatabaseController = {
       const queryPlan = result.rows[0]['QUERY PLAN'][0];
 
       if (!queryPlan) {
+        monitoringController.recordQueryMetrics({
+          error: 'No query plan retrieved',
+        });
         res.status(500).json({ message: 'Could not retrieve plan data' });
         return;
       }
@@ -81,10 +85,19 @@ const userDatabaseController: userDatabaseController = {
         totalCost: queryPlan['Plan']?.['Total Cost'],
       };
 
+      //Record metrics with prometheus
+      monitoringController.recordQueryMetrics({
+        executionTime: metrics.executionTime,
+        cacheHitRatio: metrics.cacheHitRatio,
+      });
+
       console.log('Query Metrics:', metrics);
       res.locals.queryMetrics = metrics;
       return next();
     } catch (err) {
+      monitoringController.recordQueryMetrics({
+        error: err instanceof Error ? err.message : 'Unknown query error',
+      });
       console.error('Error running query', err);
       return next({
         log: 'Error in connectDB middleware',
