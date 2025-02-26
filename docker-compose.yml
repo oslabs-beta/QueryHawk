@@ -63,6 +63,8 @@ services: # This section defines all the services (containers) we want to run
       - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
+    depends_on:
+      - otel-collector
     networks:
       - queryhawk_monitoring_network
 
@@ -79,6 +81,8 @@ services: # This section defines all the services (containers) we want to run
       - '4318:4318' # OTLP HTTP
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - queryhawk_monitoring_network
 
   # Prometheus - Collects and stores our metrics
   prometheus:
@@ -96,19 +100,21 @@ services: # This section defines all the services (containers) we want to run
     networks:
       - queryhawk_monitoring_network
 
-  # otel-collector:
-  #   image: otel/opentelemetry-collector
-  #   ports:
-  #     - '4316:4316' # OTLP gRPC receiver
-  #     - '4319:4319' # OTLP HTTP receiver
-  #   volumes:
-  #     #left side is file in my project folder and right is where it appears in the container
-  #     - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-  #   command: ['--config=/etc/otel/config.yml']
-  #   depends_on:
-  #     - jaeger
-  #     - prometheus
-
+  otel-collector:
+    image: otel/opentelemetry-collector
+    ports:
+      - '4316:4316' # OTLP gRPC receiver
+      - '4319:4319' # OTLP HTTP receiver
+      - '8889:8889' # Prometheus metrics port
+    volumes:
+      #left side is file in my project folder and right is where it appears in the container
+      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
+    command: ['--config=/etc/otel/config.yml']
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - queryhawk_monitoring_network
   # Grafana - Creates dashboards from our metrics
   grafana:
     image: grafana/grafana # Official Grafana image
