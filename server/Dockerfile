@@ -13,7 +13,7 @@ COPY tsconfig.json ./
 
 #install dependencies in container
 RUN npm install
-
+# RUN npm ci
 #  . . copies all files from ./server into /app container
 COPY server/ ./server/
 COPY types/ ./types/
