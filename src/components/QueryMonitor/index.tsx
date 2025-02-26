@@ -13,6 +13,7 @@ import {
   CircularProgress,
   ThemeProvider,
   createTheme,
+  CssBaseline,
 } from '@mui/material';
 import Logo from '../assets/logo_queryhawk';
 import GrafanaDashboard from './GrafanaDashboard';
@@ -27,8 +28,8 @@ const darkTheme = createTheme({
       main: '#ff4081',
     },
     background: {
-      default: '#000000',
-      paper: '#181b1f',
+      // default: '#000000',
+      // paper: '#181b1f',
     },
   },
 });
@@ -193,6 +194,7 @@ const QueryMonitor: React.FC = () => {
 
   return (
     <ThemeProvider theme={darkTheme}>
+      <CssBaseline /> {/* Applies cosistent base style across browsers */}
       <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
         {/* Header */}
         <Box
