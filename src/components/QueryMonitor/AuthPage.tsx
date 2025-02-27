@@ -85,7 +85,7 @@ const AuthPage: React.FC = () => {
                 component="img"
                 src={logo}
                 alt="QueryHawk Logo"
-                sx={{ width: 50, height: 50, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(50%) sepia(30%) saturate(3000%) hue-rotate(220deg) brightness(110%) contrast(90%)'}}
+                sx={{ width: 50, height: 50, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(68%) sepia(11%) saturate(2400%) hue-rotate(210deg) brightness(100%) contrast(101%)'}}
               />
               <Typography 
                 variant="h4" 
