@@ -123,7 +123,6 @@ const userDatabaseController: userDatabaseController = {
     res: Response,
     next: NextFunction
   ): Promise<void> => {
-    console.log('res.locals before check: ', res.locals);
     const { queryName, originalQuery, queryMetrics } = res.locals; // Get metrics from previous middleware
     const userId = res.locals.userId;
 
