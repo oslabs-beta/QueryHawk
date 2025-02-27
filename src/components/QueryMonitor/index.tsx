@@ -13,9 +13,12 @@ import {
   CircularProgress,
   ThemeProvider,
   createTheme,
+  CssBaseline,
+  Divider,
 } from '@mui/material';
 import Logo from '../assets/logo_queryhawk';
 import GrafanaDashboard from './GrafanaDashboard';
+import JaegerDashboard from './JaegerDashboard';
 
 const darkTheme = createTheme({
   palette: {
@@ -27,8 +30,8 @@ const darkTheme = createTheme({
       main: '#ff4081',
     },
     background: {
-      default: '#000000',
-      paper: '#181b1f',
+      // default: '#000000',
+      // paper: '#181b1f',
     },
   },
 });
@@ -193,6 +196,7 @@ const QueryMonitor: React.FC = () => {
 
   return (
     <ThemeProvider theme={darkTheme}>
+      <CssBaseline /> {/* Applies cosistent base style across browsers */}
       <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
         {/* Header */}
         <Box
@@ -282,14 +286,58 @@ const QueryMonitor: React.FC = () => {
 
           {/* Dashboard Content */}
           {isConnected && (
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <GrafanaDashboard panelId='1' title='Transaction Rate' />
+            <>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='1' title='Transaction Rate' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='2' title='Cache Hit Ratio' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='3' title='Active Connections' />
+                </Grid>
+                {/* <Grid item xs={12} md={6}>
+                <GrafanaDashboard panelId="4" title="Query Execution Time" />
+              </Grid> */}
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='5' title='Tuple Operations' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='6' title='Lock Metrics' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='7' title='I/O Statistics' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='8' title='Index Usage' />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard
+                    panelId='9'
+                    title='Transaction Commits vs Rollbacks'
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard panelId='10' title='Long-Running Queries' />
+                </Grid>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <GrafanaDashboard panelId='2' title='Cache Hit Ratio' />
-              </Grid>
-            </Grid>
+              <Divider sx={{ my: 4 }} />
+              {/* Traces Section */}
+              <Box sx={{ mt: 4, mb: 3 }}>
+                <Typography variant='h5' fontWeight='500' sx={{ mb: 3 }}>
+                  Query Traces
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <JaegerDashboard
+                      title='Recent Traces'
+                      serviceName='sql-optimizer'
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </>
           )}
         </Container>
       </Box>

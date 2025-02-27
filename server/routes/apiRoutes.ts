@@ -53,10 +53,15 @@ router.get('/metrics', monitoringController.getMetrics);
 router.post(
   '/query-metrics',
   authenticateUser, // Add authentication middleware
-  userDatabaseController.connectDB,
-  (req: Request, res: Response): void => {
-    res.status(200).json(res.locals.queryMetrics);
-  }
+  userDatabaseController.fetchUserMetrics,
+  userDatabaseController.saveMetricsToDB
+);
+
+// Add the route to get saved queries
+router.get(
+  '/saved-queries',
+  authenticateUser,
+  userDatabaseController.getSavedQueries
 );
 
 //Docker exporter routes
