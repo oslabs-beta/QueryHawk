@@ -1,8 +1,9 @@
 <div align="center">
-  <img src="./src/components/assets/logo_queryhawk.png" alt="logo_queryhawk">
+  <img src="./src/components/assets/logo_queryhawk.svg" width=50% alt="logo_queryhawk">
 </div>
 
 <div align="center">
+<a id="queryhawk"></a>
 <h1>QueryHawk</h1> 
 <p>
 <strong>Get a hawk-eyed look at your query performance.</strong>
@@ -10,17 +11,18 @@
 
 </div>
 
-### Monitor and Analyze Your SQL Performance and Database Health
+## Monitor and Analyze Your SQL Performance and Database Health
 
 QueryHawk monitors and visualizes key SQL metrics to help users improve database and query performance. A central dashboard monitors database health. Containers ensure a consistent environment for all users.
 
 <details>
   <summary>Table of Contents</summary>
 
-- [Technologies](#technologies)
 - [Introduction](#introduction)
 - [Features](#features)
 - [Initial Set-up and Installation](#initial-set-up-and-installation)
+- [Technologies](#technologies)
+- [User Interface](#user-interface)
 - [QueryHawk Team](#queryhawk-team)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
@@ -55,7 +57,7 @@ Gain insights into your SQL databases and enhance how your team approaches datab
 
 ## 📊 Real-time Performance Monitoring
 
-Once connected, QueryHawk will display multiple metrics including:
+Once connected, QueryHawk will display multiple metrics, including:
 
 - Transaction rate
 - Cache hit ratio
@@ -64,7 +66,7 @@ Once connected, QueryHawk will display multiple metrics including:
 - Lock metrics
 - I/O statistics
 - Index usage
-- Transaction commits vs rollbacks
+- Transaction commits vs. rollbacks
 - Long-running queries
 
 ## 🫥 Tracing Requests
@@ -162,23 +164,32 @@ Frontend: http://localhost:5173
 
 ---
 
-## Demo
+## User Interface
 
 <div align="center">
 
-![Login](/src/components/assets/QH_Login.png)
+<img src="./src/components/assets/QH_Login.png" alt="Login" width=50% />
 
 </div>
+
+---
+
 <div align="center">
 
 ![Dashboard](/src/components/assets/QH_Dashboard.png)
 
 </div>
+
+---
+
 <div align="center">
 
 ![Query](/src/components/assets/QH_Query.png)
 
 </div>
+
+---
+
 <div align="center">
 
 ![Metrics](/src/components/assets/QH_Metrics.png)
@@ -187,14 +198,14 @@ Frontend: http://localhost:5173
 
 ---
 
-### QueryHawk Team
+## QueryHawk Team
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-QueryHawk-23313544?style=flat&logo=linkedin)](https://www.linkedin.com/in/queryhawk-open-source-0354b7353/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-QueryHawk-313544?style=flat&logo=linkedin)](https://www.linkedin.com/company/queryhawk)
 
-- **Bryan Cabanin** 🐒: [GitHub](https://github.com/Bryancabanin) | [LinkedIn](https://www.linkedin.com/in/bryan-cabanin/)
-- **Meagan Lewis** 🦜: [GitHub](https://github.com/meaganlewis) | [LinkedIn](https://www.linkedin.com/in/meaganlewis/)
-- **Peter Limburg** 🪶: [GitHub](https://github.com/Peter-Limburg) | [LinkedIn](https://www.linkedin.com/in/peterlimburg/)
-- **Moe Na** 🐸: [GitHub](https://github.com/wmoew) | [LinkedIn](https://www.linkedin.com/in/mn1098/)
+- **Bryan Cabanin** 🐒 [GitHub](https://github.com/Bryancabanin) | [LinkedIn](https://www.linkedin.com/in/bryan-cabanin/)
+- **Meagan Lewis** 🦜 [GitHub](https://github.com/meaganlewis) | [LinkedIn](https://www.linkedin.com/in/meaganlewis/)
+- **Peter Limburg** 🪶 [GitHub](https://github.com/Peter-Limburg) | [LinkedIn](https://www.linkedin.com/in/peterlimburg/)
+- **Moe Na** 🐸 [GitHub](https://github.com/wmoew) | [LinkedIn](https://www.linkedin.com/in/mn1098/)
 
 ## Acknowledgements
 
@@ -276,4 +287,3 @@ docker network prune
 
 Remove all dangling resources:
 docker system prune -a
-
