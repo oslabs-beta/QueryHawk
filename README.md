@@ -145,6 +145,7 @@ Steps to create container:
    Example:
    docker run -p 4002:4001 my-server
 
+```
 To find containers ID or containers name:
 docker ps
 
@@ -180,6 +181,7 @@ docker network prune
 
 Remove all dangling resources:
 docker system prune -a
+```
 
 ## Technologies
 
