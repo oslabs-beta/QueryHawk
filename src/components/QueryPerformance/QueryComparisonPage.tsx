@@ -45,7 +45,9 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
         >
           Compare Queries
         </Button>
-        <Button variant='outlined' onClick={onExitCompare}>
+        <Button variant='outlined' onClick={onExitCompare} sx={{
+                  textTransform: "none"
+                }}>
           Exit Comparison
         </Button>
       </Box>

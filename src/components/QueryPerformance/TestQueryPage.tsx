@@ -225,7 +225,7 @@ const TestQueryPage: React.FC = () => {
             <Alert
               severity='warning'
               action={
-                <Button color='inherit' size='small' onClick={handleLogin}>
+                <Button color='inherit' size='small' onClick={handleLogin} sx={{textTransform: "none"}}>
                   Log In
                 </Button>
               }

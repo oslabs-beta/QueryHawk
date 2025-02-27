@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Box,
   Container,
@@ -7,10 +7,10 @@ import {
   Button,
   ThemeProvider,
   createTheme,
-} from '@mui/material';
-import HistoryIcon from '@mui/icons-material/History';
-import Logo from '../assets/logo_queryhawk';
-import { useNavigate } from 'react-router-dom';
+} from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
+import Logo from "../assets/logo_queryhawk";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   onHistoryClick?: () => void;
@@ -38,23 +38,23 @@ const Header: React.FC<HeaderProps> = ({ onHistoryClick, isAuthenticated }) => {
   return (
     // <ThemeProvider theme={darkTheme}>
     <Box sx={{ py: 2, px: 2 }}>
-      <Container maxWidth='xl'>
+      <Container maxWidth="xl">
         <Box
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           {/* Logo and Title */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <IconButton
-              sx={{ p: 0, color: 'white' }}
-              onClick={() => navigate('/')}
+              sx={{ p: 0, color: "primary.main" }}
+              onClick={() => navigate("/")}
             >
               <Logo />
             </IconButton>
-            <Typography variant='h6' fontWeight='500' color='white'>
+            <Typography variant="h6" fontWeight="600" color="white">
               QueryHawk
             </Typography>
           </Box>
@@ -62,9 +62,12 @@ const Header: React.FC<HeaderProps> = ({ onHistoryClick, isAuthenticated }) => {
           {/* History button */}
           {isAuthenticated && onHistoryClick && (
             <Button
-              variant='outlined'
+              variant="outlined"
               startIcon={<HistoryIcon />}
               onClick={onHistoryClick}
+              sx={{
+                textTransform: "none",
+              }}
             >
               Query History
             </Button>

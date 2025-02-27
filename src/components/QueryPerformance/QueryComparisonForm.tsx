@@ -83,6 +83,9 @@ const ComparisonDialog: React.FC<ComparisonDialogProps> = ({
         <Button
           onClick={onCompare}
           variant='contained'
+          sx={{
+            textTransform: "none"
+          }}
           disabled={
             selectedQueries.first === null || selectedQueries.second === null
           }
