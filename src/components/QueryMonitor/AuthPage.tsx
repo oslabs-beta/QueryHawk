@@ -17,18 +17,18 @@ const darkTheme = createTheme({
     palette: {
       mode: 'dark',
       primary: {
-        main: '#c9b1fc',
+        main: '#9d7fff',
       },
       secondary: {
         main: '#FFB4E1',
       },
       background: {
         default: '#0A0A0F',
-        paper: '#141420',
+        paper: '#16121F',
       },
     },
     typography: {
-      fontFamily: '"Pacifico", sans-serif',  // Fun, simple font
+      fontFamily: '"Pacifico", sans-serif',
     },
     components: {
       MuiButton: {
@@ -77,7 +77,6 @@ const AuthPage: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
             {/* Logo and Title */}
@@ -86,12 +85,12 @@ const AuthPage: React.FC = () => {
                 component="img"
                 src={logo}
                 alt="QueryHawk Logo"
-                sx={{ width: 50, height: 50, objectFit: 'contain' }}
+                sx={{ width: 50, height: 50, objectFit: 'contain', filter: 'brightness(0) invert(1)'}}
               />
               <Typography 
                 variant="h4" 
                 component="h1"
-                color="primary"
+                sx={{ fontWeight: 600, color: "primary.main"}}
               >
                 QueryHawk
               </Typography>
@@ -103,7 +102,7 @@ const AuthPage: React.FC = () => {
               variant="outlined"
               startIcon={<GitHubIcon />}
               onClick={handleGitHubLogin}
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, textTransform: "none"}}
             >
               Continue with GitHub
             </Button>

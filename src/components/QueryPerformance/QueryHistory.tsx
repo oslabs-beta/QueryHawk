@@ -109,6 +109,9 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
                       <Button
                         variant='outlined'
                         size='small'
+                        sx={{
+                          textTransform: "none"
+                        }}
                         onClick={() =>
                           onLoadQuery(item.queryText, item.metrics)
                         }
