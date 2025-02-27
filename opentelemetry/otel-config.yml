@@ -32,7 +32,7 @@ exporters:
 
   prometheus: # Sends metrics to Prometheus
     endpoint: '0.0.0.0:8889' # Where Prometheus can collect metrics
-    namespace: 'your_app' # Groups metrics under this name
+    namespace: 'queryhawk' # Groups metrics under this name
 
 # Service: How everything connects together
 #pipeline is where pipelines are configured and can be of types traces, metrics, or logs
