@@ -7,7 +7,9 @@ import OAuthController from '../controllers/OAuthController';
 import {
   setDatabaseUriToPostgresExporter,
   cleanupExporter,
-} from '../utils/dockerPostgresExporter';
+  listActiveTargets,
+  getTargetStatus,
+} from '../utils/alloyPostgresExporter';
 const router = express.Router();
 
 // ===== Auth Routes (public) =====
@@ -37,7 +39,7 @@ router.post(
   (req: Request, res: Response): void => {
     try {
       res.status(200).json({ message: 'Logged out successfully' });
-    } catch (error) {
+    } catch {
       res.status(500).json({ error: 'Logout failed' });
     }
   }
@@ -62,6 +64,25 @@ router.get(
   '/saved-queries',
   authenticateUser,
   userDatabaseController.getSavedQueries
+);
+
+// Add query analysis endpoints
+router.post(
+  '/query/analyze',
+  authenticateUser,
+  userDatabaseController.analyzeQuery
+);
+
+router.post(
+  '/query/compare',
+  authenticateUser,
+  userDatabaseController.compareQueries
+);
+
+router.get(
+  '/query/history/:queryHash',
+  authenticateUser,
+  userDatabaseController.getQueryHistory
 );
 
 //Docker exporter routes
@@ -126,6 +147,60 @@ router.post(
             error instanceof Error
               ? error.message
               : 'Failed to stop monitoring',
+        },
+      });
+    }
+  }
+);
+
+// Add new Alloy monitoring endpoints
+router.get(
+  '/monitoring/targets',
+  authenticateUser,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const targets = await listActiveTargets();
+      res.status(200).json({ targets });
+    } catch (error) {
+      console.error('Error listing monitoring targets:', error);
+      next({
+        log: 'Error in listActiveTargets middleware',
+        status: 500,
+        message: {
+          err:
+            error instanceof Error
+              ? error.message
+              : 'Failed to list monitoring targets',
+        },
+      });
+    }
+  }
+);
+
+router.get(
+  '/monitoring/targets/:userId',
+  authenticateUser,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const target = await getTargetStatus(userId);
+
+      if (!target) {
+        res.status(404).json({ message: 'Monitoring target not found' });
+        return;
+      }
+
+      res.status(200).json({ target });
+    } catch (error) {
+      console.error('Error getting monitoring target status:', error);
+      next({
+        log: 'Error in getTargetStatus middleware',
+        status: 500,
+        message: {
+          err:
+            error instanceof Error
+              ? error.message
+              : 'Failed to get monitoring target status',
         },
       });
     }

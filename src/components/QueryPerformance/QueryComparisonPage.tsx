@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -11,6 +11,7 @@ import {
 import { SavedQuery } from './QueryHistory';
 import MetricsTable from './MetricsTable';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import LeanQueryAnalyzer from './LeanQueryAnalyzer';
 
 interface QueryComparisonViewProps {
   firstQuery: SavedQuery | null;
@@ -23,7 +24,43 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
   secondQuery,
   onExitCompare,
 }) => {
+  const [comparisonResults, setComparisonResults] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
   if (!firstQuery || !secondQuery) return null;
+
+  // Function to compare queries using the enhanced API
+  const handleCompareQueries = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:4002/api/query/compare', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          query1: firstQuery.queryText,
+          query2: secondQuery.queryText,
+        }),
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+        setComparisonResults(results);
+      }
+    } catch (error) {
+      console.error('Comparison failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-compare when component mounts
+  useEffect(() => {
+    handleCompareQueries();
+  }, [firstQuery, secondQuery]);
 
   return (
     <Box>
@@ -39,15 +76,20 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           Query Comparison
         </Typography>
         <Button
-          // onClick={onOpenCompare}
+          onClick={handleCompareQueries}
           variant='contained'
           startIcon={<CompareArrowsIcon />}
+          disabled={loading}
         >
-          Compare Queries
+          {loading ? 'Comparing...' : 'Compare Queries'}
         </Button>
-        <Button variant='outlined' onClick={onExitCompare} sx={{
-                  textTransform: "none"
-                }}>
+        <Button
+          variant='outlined'
+          onClick={onExitCompare}
+          sx={{
+            textTransform: 'none',
+          }}
+        >
           Exit Comparison
         </Button>
       </Box>
@@ -156,6 +198,14 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Enhanced Lean Query Analyzer Comparison */}
+      {comparisonResults && (
+        <LeanQueryAnalyzer
+          comparisonData={comparisonResults}
+          mode='comparison'
+        />
+      )}
     </Box>
   );
 };

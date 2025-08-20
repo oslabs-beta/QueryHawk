@@ -1,4 +1,4 @@
-version: '3.7'
+# Docker Compose configuration for QueryHawk with Grafana Alloy
 
 #ALL VOLUMES AND COMMANDS AND BUILDS WILL NEED TO BE UPDATED WITH ACCURATE
 #LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
@@ -50,7 +50,7 @@ services: # This section defines all the services (containers) we want to run
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
       - /var/run/docker.sock:/var/run/docker.sock
-      - prometheus_targets:/var/prometheus/postgres_targets
+      - ./grafana-alloy/targets:/app/grafana-alloy/targets
     env_file:
       - .env
     environment:
@@ -62,9 +62,9 @@ services: # This section defines all the services (containers) we want to run
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:4318 # OTLP endpoint for Grafana Alloy
     depends_on:
-      - otel-collector
+      - jaeger
     networks:
       - queryhawk_monitoring_network
 
@@ -84,35 +84,24 @@ services: # This section defines all the services (containers) we want to run
     networks:
       - queryhawk_monitoring_network
 
-  # Prometheus - Collects and stores our metrics
-  prometheus:
-    image: prom/prometheus # Official Prometheus image
-    ports:
-      - '9090:9090' # Prometheus web interface
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Mount your config file
-      - prometheus_data:/prometheus # For prometheus data
-      - prometheus_targets:/var/prometheus/postgres_targets
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.enable-lifecycle'
-    container_name: queryhawk-prometheus-1
-    networks:
-      - queryhawk_monitoring_network
+  # Prometheus service removed - Alloy handles metrics collection and sends to Grafana
 
-  otel-collector:
-    image: otel/opentelemetry-collector
+  grafana-alloy:
+    build:
+      context: ./grafana-alloy
+      dockerfile: Dockerfile
     ports:
-      - '4316:4316' # OTLP gRPC receiver
-      - '4319:4319' # OTLP HTTP receiver
-      - '8889:8889' # Prometheus metrics port
+      - '12345:12345' # Alloy HTTP port
+      - '12346:12346' # Alloy gRPC port
+      - '4317:4317' # OTLP gRPC receiver
+      - '4318:4318' # OTLP HTTP receiver
     volumes:
-      #left side is file in my project folder and right is where it appears in the container
-      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-    command: ['--config=/etc/otel/config.yml']
+      - ./grafana-alloy/config.yml:/etc/alloy/config.yml
+      - ./grafana-alloy/targets:/etc/alloy/targets
+      - ./grafana-alloy/targets:/app/targets
+    command: ['--config.file=/etc/alloy/config.yml']
     depends_on:
-      - jaeger
-      - prometheus
+      - grafana
     networks:
       - queryhawk_monitoring_network
   # Grafana - Creates dashboards from our metrics
@@ -136,7 +125,7 @@ services: # This section defines all the services (containers) we want to run
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
-      - prometheus # Needs Prometheus to start first
+      - backend # Needs backend to start first
     networks:
       - queryhawk_monitoring_network
 
@@ -170,8 +159,5 @@ networks:
     driver: bridge
   # Persistent storage for our services
 volumes:
-  prometheus_config: #Prometheus configuration files
-  prometheus_data: # Metrics storage
-  prometheus_targets: #Dynamic postgres exporter targets
   grafana_data: # Dashboard configurations
 

@@ -22,15 +22,19 @@ const sdk = new NodeSDK({
   }),
 
   // Trace Exporter: Configures where to send the traces
-  // In this case, sending to big Docker file, specifically to otel-collector service which represents opentelemetry
+  // Now sending to Grafana Alloy for unified observability
   traceExporter: new OTLPTraceExporter({
-    url: 'http://otel-collector:4318/v1/traces', // Points to Docker service
+    url: 'http://grafana-alloy:4318/v1/traces', // Points to Alloy service
   }),
 
   // Span Processor: Handles each span (trace segment) as it's completed
   // SimpleSpanProcessor: Exports spans immediately (good for development)
   // For production, consider BatchSpanProcessor instead
-  spanProcessor: new SimpleSpanProcessor(new OTLPTraceExporter()),
+  spanProcessor: new SimpleSpanProcessor(
+    new OTLPTraceExporter({
+      url: 'http://grafana-alloy:4318/v1/traces',
+    })
+  ),
 
   // Auto-instrumentations: Automatically traces common Node.js libraries
   instrumentations: [
