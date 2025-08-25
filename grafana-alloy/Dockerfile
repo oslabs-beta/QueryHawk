@@ -18,4 +18,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:12345/ready || exit 1
 
 # Start Alloy
-CMD ["--config.file=/etc/alloy/config.yml"]
+CMD ["run", "/etc/alloy/config.yml"]

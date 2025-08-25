@@ -59,10 +59,10 @@ traces:
         otlp:
           protocols:
             grpc:
-              endpoint: 0.0.0.0:4317
+              endpoint: 0.0.0.0:14317
             http:
-              endpoint: 0.0.0.0:4318
-      
+              endpoint: 0.0.0.0:14318
+
       processors:
         - batch:
             timeout: 1s
@@ -73,30 +73,30 @@ traces:
               - key: http.request.header.authorization
                 action: delete
               - key: db.statement
-                action: hash  # Hash instead of delete for query correlation
+                action: hash # Hash instead of delete for query correlation
               # Add QueryHawk-specific attributes
               - key: queryhawk.service
-                value: "query-analyzer"
+                value: 'query-analyzer'
                 action: insert
               - key: queryhawk.version
-                value: "2.0.0"
+                value: '2.0.0'
                 action: insert
         - resource:
             attributes:
               - key: service.namespace
-                value: "queryhawk"
+                value: 'queryhawk'
                 action: insert
               - key: deployment.environment
-                value: "development"
+                value: 'development'
                 action: insert
-      
+
       exporters:
         - otlp:
             endpoint: http://grafana:3000/api/v1/traces
             tls:
               insecure: true
             headers:
-              X-Scope-OrgID: "1"
+              X-Scope-OrgID: '1'
 
 logs:
   configs:

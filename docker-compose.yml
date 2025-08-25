@@ -62,7 +62,7 @@ services: # This section defines all the services (containers) we want to run
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:4318 # OTLP endpoint for Grafana Alloy
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:14318 # OTLP endpoint for Grafana Alloy
     depends_on:
       - jaeger
     networks:
@@ -93,13 +93,13 @@ services: # This section defines all the services (containers) we want to run
     ports:
       - '12345:12345' # Alloy HTTP port
       - '12346:12346' # Alloy gRPC port
-      - '4317:4317' # OTLP gRPC receiver
-      - '4318:4318' # OTLP HTTP receiver
+      - '14317:14317' # OTLP gRPC receiver
+      - '14318:14318' # OTLP HTTP receiver
     volumes:
       - ./grafana-alloy/config.yml:/etc/alloy/config.yml
       - ./grafana-alloy/targets:/etc/alloy/targets
       - ./grafana-alloy/targets:/app/targets
-    command: ['--config.file=/etc/alloy/config.yml']
+
     depends_on:
       - grafana
     networks:

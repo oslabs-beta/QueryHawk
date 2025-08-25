@@ -1,0 +1,66 @@
+{
+  "name": "alloy-postgres-exporter",
+  "version": "1.0.0",
+  "description": "A production-ready PostgreSQL monitoring solution that dynamically configures Grafana Alloy targets for real-time database observability",
+  "main": "dist/alloyPostgresExporter.js",
+  "types": "dist/alloyPostgresExporter.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "postgresql",
+    "monitoring",
+    "observability",
+    "grafana",
+    "alloy",
+    "metrics",
+    "database",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "[Your Name]",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/[username]/alloy-postgres-exporter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/[username]/alloy-postgres-exporter/issues"
+  },
+  "homepage": "https://github.com/[username]/alloy-postgres-exporter#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0"
+  },
+  "dependencies": {},
+  "peerDependencies": {},
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

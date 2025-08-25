@@ -128,7 +128,8 @@ docker-compose up -d
 ```
 Frontend: http://localhost:5173
 ```
-## Docker Cheatsheet 
+
+## Docker Cheatsheet
 
 Steps to create container:
 
@@ -275,4 +276,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 #### [Return to top](#queryhawk)
 
 ---
-
