@@ -31,7 +31,7 @@ services: # This section defines all the services (containers) we want to run
   #   ports:
   #     - '9187:9187'
   #   networks:
-  #     - queryhawk_monitoring_network
+  #     - queryhawk_monitoring_networkhec
   #   depends_on:
   #     - test_user_db
 
@@ -84,8 +84,34 @@ services: # This section defines all the services (containers) we want to run
     networks:
       - queryhawk_monitoring_network
 
-  # Prometheus service removed - Alloy handles metrics collection and sends to Grafana
+  # Loki - Log aggregation and querying
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - '3100:3100' # Loki HTTP API
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    networks:
+      - queryhawk_monitoring_network
 
+  # Mimir - Long-term metrics storage and Prometheus-compatible API
+  mimir:
+    image: grafana/mimir:2.10.0
+    ports:
+      - '9009:9009' # Mimir HTTP API
+      - '9095:9095' # Mimir gRPC API
+    command: -config.file=/etc/mimir/mimir.yaml
+    volumes:
+      - ./mimir/mimir.yaml:/etc/mimir/mimir.yaml
+      - mimir_data:/data
+    environment:
+      - MIMIR_CONFIG=/etc/mimir/mimir.yaml
+    networks:
+      - queryhawk_monitoring_network
+
+  # Grafana Alloy - Metrics collection and processing
   grafana-alloy:
     build:
       context: ./grafana-alloy
@@ -99,11 +125,15 @@ services: # This section defines all the services (containers) we want to run
       - ./grafana-alloy/config.yml:/etc/alloy/config.yml
       - ./grafana-alloy/targets:/etc/alloy/targets
       - ./grafana-alloy/targets:/app/targets
-
     depends_on:
+      - mimir
+      - loki
       - grafana
     networks:
       - queryhawk_monitoring_network
+
+  # Prometheus service removed - Alloy handles metrics collection and sends to Grafana
+
   # Grafana - Creates dashboards from our metrics
   grafana:
     image: grafana/grafana # Official Grafana image
@@ -160,4 +190,6 @@ networks:
   # Persistent storage for our services
 volumes:
   grafana_data: # Dashboard configurations
+  loki_data: # Loki data
+  mimir_data: # Mimir data
 
