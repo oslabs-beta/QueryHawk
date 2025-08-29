@@ -77,3 +77,16 @@ JOIN users u ON q.user_id = u.id;
 
 -- Grant necessary permissions
 GRANT SELECT ON query_analysis_view TO PUBLIC;
+
+-- User connections table for multi-user PostgreSQL monitoring
+CREATE TABLE IF NOT EXISTS user_connections (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  uri_string TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+CREATE INDEX idx_user_connections_active ON user_connections(is_active) WHERE is_active = true;

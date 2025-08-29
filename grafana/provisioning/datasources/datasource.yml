@@ -13,7 +13,7 @@ datasources:
     type: prometheus
     access: proxy # How Grafana accesses the data source
     uid: prometheus
-    url: http://grafana-alloy:12345 # Internal Docker network URL for Alloy
+    url: http://mimir:9009 # Internal Docker network URL for Mimir
     isDefault: false # Not default since Alloy is the primary datasource
     jsonData:
       timeInterval: 15s # Minimum time interval between data points

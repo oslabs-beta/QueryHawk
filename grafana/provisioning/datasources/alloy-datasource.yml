@@ -4,7 +4,7 @@ datasources:
   - name: Alloy
     type: prometheus
     access: proxy
-    url: http://grafana-alloy:12345
+    url: http://mimir:9009
     isDefault: true
     editable: true
     jsonData:
@@ -14,7 +14,7 @@ datasources:
       manageAlerts: true
       prometheusType: Prometheus
       prometheusVersion: 2.45.0
-      prometheusUrl: http://grafana-alloy:12345
+      prometheusUrl: http://mimir:9009
       cacheLevel: 'High'
       disableRecordingRules: false
       incrementalQueryOverlapWindow: 10m

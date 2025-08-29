@@ -4,36 +4,14 @@ level  = "info"
 format = "logfmt"
 }
 
-// Prometheus metrics scraping
-prometheus.scrape "alloy" {
-targets = [{
-__address__ = "localhost:12345",
-}]
-forward_to = [prometheus.remote_write.mimir.receiver]
-metrics_path = "/metrics"
-scrape_interval = "15s"
-}
-
-prometheus.scrape "backend" {
+// Prometheus metrics scraping from backend (multi-user)
+prometheus.scrape "backend_multi_user" {
 targets = [{
 __address__ = "backend:4002",
 }]
 forward_to = [prometheus.remote_write.mimir.receiver]
-metrics_path = "/metrics"
+metrics_path = "/api/metrics"
 scrape_interval = "15s"
-}
-
-// File-based service discovery for PostgreSQL
-discovery.file "postgres" {
-files = ["/etc/alloy/targets/*.json"]
-}
-
-prometheus.scrape "postgresql" {
-targets = discovery.file.postgres.targets
-forward_to = [prometheus.remote_write.mimir.receiver]
-metrics_path = "/metrics"
-scrape_interval = "15s"
-scrape_timeout = "10s"
 }
 
 // Remote write to Mimir

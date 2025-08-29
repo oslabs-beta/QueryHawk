@@ -14,6 +14,7 @@ ingester:
   ring:
     kvstore:
       store: memberlist
+    replication_factor: 1
 
 compactor:
   sharding_ring:
@@ -27,11 +28,6 @@ store_gateway:
 
 ruler:
   ring:
-    kvstore:
-      store: memberlist
-
-alertmanager:
-  sharding_ring:
     kvstore:
       store: memberlist
 

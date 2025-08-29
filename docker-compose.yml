@@ -122,7 +122,7 @@ services: # This section defines all the services (containers) we want to run
       - '14317:14317' # OTLP gRPC receiver
       - '14318:14318' # OTLP HTTP receiver
     volumes:
-      - ./grafana-alloy/config.yml:/etc/alloy/config.yml
+      - ./grafana-alloy/config.river:/etc/alloy/config.river
       - ./grafana-alloy/targets:/etc/alloy/targets
       - ./grafana-alloy/targets:/app/targets
     depends_on:
