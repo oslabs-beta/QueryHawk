@@ -1,7 +1,10 @@
 //handles both auth and protected routes
 import express, { Request, Response, NextFunction } from 'express';
 import userDatabaseController from '../controllers/userDatabaseController';
-import monitoringController from '../controllers/monitoringController';
+import {
+  setupMonitoring,
+  getMetrics,
+} from '../controllers/monitoringController';
 import { authenticateUser } from '../middleware/authMiddleware';
 import OAuthController from '../controllers/OAuthController';
 import {
@@ -46,10 +49,10 @@ router.post(
 );
 
 // Add monitoring routes
-router.post('/connect', authenticateUser, monitoringController.setupMonitoring);
+router.post('/connect', authenticateUser, setupMonitoring);
 
 // Add the metrics endpoint
-router.get('/metrics', monitoringController.getMetrics);
+router.get('/metrics', getMetrics);
 
 // ===== Protected API Routes =====
 router.post(

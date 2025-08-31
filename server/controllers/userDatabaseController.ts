@@ -1,6 +1,6 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import pg from 'pg';
-import monitoringController from './monitoringController';
+import { recordQueryMetrics } from './monitoringController';
 import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
 
 // Creating a pool for our app database to save metrics.
@@ -92,7 +92,7 @@ const userDatabaseController: userDatabaseController = {
       const queryPlan = result.rows[0]['QUERY PLAN'][0];
 
       if (!queryPlan) {
-        monitoringController.recordQueryMetrics({
+        recordQueryMetrics({
           error: 'No query plan retrieved',
         });
         res.status(500).json({ message: 'Could not retrieve plan data' });
@@ -130,7 +130,7 @@ const userDatabaseController: userDatabaseController = {
       };
 
       //Record metrics with prometheus
-      monitoringController.recordQueryMetrics({
+      recordQueryMetrics({
         executionTime: metrics.executionTime,
         cacheHitRatio: metrics.cacheHitRatio,
       });
@@ -141,7 +141,7 @@ const userDatabaseController: userDatabaseController = {
       res.locals.originalQuery = query;
       return next();
     } catch (err) {
-      monitoringController.recordQueryMetrics({
+      recordQueryMetrics({
         error: err instanceof Error ? err.message : 'Unknown query error',
       });
       console.error('Error running query', err);
@@ -307,14 +307,19 @@ const userDatabaseController: userDatabaseController = {
         attributes: {
           'user.id': userId,
           'query.length': sqlQuery?.length || 0,
-          'query.hash': Buffer.from(sqlQuery || '').toString('base64').slice(0, 16),
+          'query.hash': Buffer.from(sqlQuery || '')
+            .toString('base64')
+            .slice(0, 16),
           'service.name': 'queryhawk-query-analyzer',
         },
       },
       async (span) => {
         try {
           if (!sqlQuery) {
-            span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing SQL query' });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: 'Missing SQL query',
+            });
             span.setAttribute('error.type', 'validation_error');
             res.status(400).json({ message: 'SQL query is required.' });
             return;
@@ -327,9 +332,12 @@ const userDatabaseController: userDatabaseController = {
           console.log('Analyzing query for user:', userId);
 
           // Get database connection with tracing
-          const connectionSpan = tracer.startSpan('database.connection.resolve', {
-            attributes: { 'user.id': userId },
-          });
+          const connectionSpan = tracer.startSpan(
+            'database.connection.resolve',
+            {
+              attributes: { 'user.id': userId },
+            }
+          );
 
           try {
             const userQueryResult = await appDbPool.query(
@@ -344,13 +352,22 @@ const userDatabaseController: userDatabaseController = {
 
             connectionSpan.setAttributes({
               'database.connection.found': !!uri_string,
-              'database.connection.source': userQueryResult.rows.length > 0 ? 'user' : 'default',
+              'database.connection.source':
+                userQueryResult.rows.length > 0 ? 'user' : 'default',
             });
 
             if (!uri_string) {
-              connectionSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'No database connection' });
-              span.setStatus({ code: SpanStatusCode.ERROR, message: 'No database connection found' });
-              res.status(400).json({ message: 'No database connection found for user.' });
+              connectionSpan.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: 'No database connection',
+              });
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: 'No database connection found',
+              });
+              res
+                .status(400)
+                .json({ message: 'No database connection found for user.' });
               return;
             }
 
@@ -365,7 +382,10 @@ const userDatabaseController: userDatabaseController = {
             attributes: {
               'db.system': 'postgresql',
               'db.operation': 'EXPLAIN ANALYZE',
-              'db.statement': `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sqlQuery.slice(0, 100)}...`,
+              'db.statement': `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sqlQuery.slice(
+                0,
+                100
+              )}...`,
             },
           });
 
@@ -377,7 +397,7 @@ const userDatabaseController: userDatabaseController = {
 
           const explainQuery = `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sqlQuery}`;
           const startTime = Date.now();
-          
+
           const result = await userDBPool.query(explainQuery);
           const explainDuration = Date.now() - startTime;
 
@@ -390,8 +410,14 @@ const userDatabaseController: userDatabaseController = {
 
           const queryPlan = result.rows[0]['QUERY PLAN'][0];
           if (!queryPlan) {
-            explainSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'No query plan retrieved' });
-            span.setStatus({ code: SpanStatusCode.ERROR, message: 'Could not retrieve plan data' });
+            explainSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: 'No query plan retrieved',
+            });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: 'Could not retrieve plan data',
+            });
             res.status(500).json({ message: 'Could not retrieve plan data' });
             return;
           }
@@ -428,8 +454,12 @@ const userDatabaseController: userDatabaseController = {
             });
 
             analysisSpan.addEvent('analysis.completed', {
-              'performance.rating': insights.isSlowQuery || insights.isBadCache || insights.isExpensive 
-                ? 'needs_optimization' : 'good',
+              'performance.rating':
+                insights.isSlowQuery ||
+                insights.isBadCache ||
+                insights.isExpensive
+                  ? 'needs_optimization'
+                  : 'good',
             });
 
             analysisSpan.setStatus({ code: SpanStatusCode.OK });
@@ -443,12 +473,17 @@ const userDatabaseController: userDatabaseController = {
           });
 
           try {
-            await userDatabaseController.storeQueryAnalysis(userId, sqlQuery, analysis);
+            await userDatabaseController.storeQueryAnalysis(
+              userId,
+              sqlQuery,
+              analysis
+            );
             storageSpan.setStatus({ code: SpanStatusCode.OK });
           } catch (error) {
-            storageSpan.setStatus({ 
-              code: SpanStatusCode.ERROR, 
-              message: error instanceof Error ? error.message : 'Storage failed' 
+            storageSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message:
+                error instanceof Error ? error.message : 'Storage failed',
             });
             // Don't fail the entire operation if storage fails
             console.warn('Failed to store query analysis:', error);
@@ -469,22 +504,22 @@ const userDatabaseController: userDatabaseController = {
 
           span.addEvent('query.analysis.completed', {
             'recommendations.count': insights.recommendations.length,
-            'status': 'success',
+            status: 'success',
           });
 
           span.setStatus({ code: SpanStatusCode.OK });
           res.json({ analysis, insights });
-
         } catch (error) {
           span.recordException(error as Error);
-          span.setStatus({ 
-            code: SpanStatusCode.ERROR, 
-            message: error instanceof Error ? error.message : 'Unknown error' 
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: error instanceof Error ? error.message : 'Unknown error',
           });
-          
+
           console.error('Query analysis failed:', error);
           res.status(500).json({
-            error: error instanceof Error ? error.message : 'Query analysis failed',
+            error:
+              error instanceof Error ? error.message : 'Query analysis failed',
           });
         } finally {
           span.end();

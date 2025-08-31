@@ -42,6 +42,9 @@ services: # This section defines all the services (containers) we want to run
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
       - '4002:4002' # API will be available on localhost:4002
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container

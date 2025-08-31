@@ -1,14 +1,6 @@
 -- Migration script for QueryHawk Lean Query Analyzer
 -- Run this script to create/update required tables
 
--- Create user_connections table if it doesn't exist
-CREATE TABLE IF NOT EXISTS user_connections (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    uri_string TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
 
 -- Create index on user_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_user_connections_user_id ON user_connections(user_id);
