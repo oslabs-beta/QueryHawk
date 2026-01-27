@@ -18,10 +18,10 @@ pool.on('error', (err) => {
 
 export class OAuthModel {
   async findOrCreateUser(githubUser: GithubUser): Promise<DbUser> {
-    console.log(
-      '🔍 Connection string:',
-      process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')
-    );
+    // console.log(
+    //   '🔍 Connection string:',
+    //   process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')
+    // );
     const client = await pool.connect();
 
     try {
@@ -79,7 +79,7 @@ export class OAuthModel {
 
       if (sameEmailResult.rows.length > 0) {
         authUserId = sameEmailResult.rows[0].id;
-        console.log('✅ Found existing auth user with same email:', authUserId);
+        // console.log('✅ Found existing auth user with same email:', authUserId);
       } else {
         // Create a new user in auth.users if none exists
         console.log(
@@ -138,7 +138,7 @@ export class OAuthModel {
         );
 
         authUserId = insertAuthUserResult.rows[0].id;
-        console.log('✅ Created new auth user with ID:', authUserId);
+        // console.log('✅ Created new auth user with ID:', authUserId);
       }
 
       // Check if we have a user in user_account

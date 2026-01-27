@@ -1,6 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  Box, Paper, CardContent, CircularProgress, Alert
+import {
+  Box,
+  Paper,
+  CardContent,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 
 // Props interface for the GrafanaDashboard component
@@ -17,14 +21,14 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Construct the URL for the Grafana dashboard
   const constructUrl = useCallback(() => {
     try {
       // Base URL from our Docker setup
-      const baseUrl = new URL('http://localhost:3001'); 
+      const baseUrl = new URL('http://localhost:3001');
       // Set the path for the specific dashboard
-      baseUrl.pathname = `/d-solo/postgresql-overview/postgresql-overview`;// Ensure the URL is valid
+      baseUrl.pathname = `/d-solo/postgresql-overview/postgresql-overview`; // Ensure the URL is valid
       // All the query parameters we need
       const params = {
         orgId: '1',
@@ -36,41 +40,48 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
         'auth.anonymous': 'true',
         kiosk: 'true',
         'var-database': 'postgres',
-    };
-    // Add all params to the URL
-    Object.entries(params).forEach(([key, value]) => {
-      baseUrl.searchParams.set(key, value);
-    });
-    return baseUrl.toString();
-  } catch (err) {
-    setError('Invalid dashboard URL');
-    return '';
-  }
+      };
+      // Add all params to the URL
+      Object.entries(params).forEach(([key, value]) => {
+        baseUrl.searchParams.set(key, value);
+      });
+      return baseUrl.toString();
+    } catch (err) {
+      setError('Invalid dashboard URL');
+      return '';
+    }
   }, [panelId]);
 
   // Component render
   return (
-    <Paper elevation={2} sx={{ bgcolor: '#181b1f'}}>
+    <Paper elevation={2} sx={{ bgcolor: '#181b1f' }}>
       {/* Main content area */}
       <CardContent>
         {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', 
-            alignItems: 'center', position: 'absolute',
-            inset: 0, bgcolor: 'rgba(255, 255, 255, 1)', zIndex: 2
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'absolute',
+              inset: 0,
+              bgcolor: 'background.default',
+              zIndex: 2,
+            }}
+          >
             <CircularProgress />
           </Box>
         )}
 
         {/* Error message */}
         {error && (
-          <Alert severity="error" sx={{ m: 2 }}>
+          <Alert severity='error' sx={{ m: 2 }}>
             {error}
           </Alert>
         )}
 
         {/* Panel container */}
-        <Box sx={{ position: 'relative', height: '300px'}}>
+        <Box sx={{ position: 'relative', height: '300px' }}>
           {/* Grafana iframe */}
           <iframe
             id={`panel-${panelId}`}
@@ -78,7 +89,7 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
             style={{
               border: 'none',
               width: '100%',
-              height: '100%'
+              height: '100%',
             }}
             onLoad={() => setIsLoading(false)}
             onError={() => {

@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Container,
+  CssBaseline,
   Paper,
   Typography,
 } from '@mui/material';
@@ -14,53 +15,55 @@ import logo from '../assets/logo_queryhawk.svg';
 
 // Create dark theme
 const darkTheme = createTheme({
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#9d7fff',
-      },
-      secondary: {
-        main: '#FFB4E1',
-      },
-      background: {
-        default: '#0A0A0F',
-        paper: '#16121F',
-      },
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#9d7fff',
     },
-    typography: {
-      fontFamily: '"Pacifico", sans-serif',
+    secondary: {
+      main: '#FFB4E1',
     },
-    components: {
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            borderRadius: 12,
-            textTransform: 'none',
-          },
-        },
-      },
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            borderRadius: 16,
-          },
+    background: {
+      default: '#0A0A0F',
+      paper: '#16121F',
+    },
+  },
+  typography: {
+    fontFamily: '"Pacifico", sans-serif',
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          textTransform: 'none',
         },
       },
     },
-  });
-  
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+        },
+      },
+    },
+  },
+});
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleGitHubLogin = () => {
     const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-    const redirectUri = encodeURIComponent(window.location.origin + '/auth/github/callback');
+    const redirectUri = encodeURIComponent(
+      window.location.origin + '/auth/github/callback'
+    );
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=user:email`;
   };
 
   return (
     <ThemeProvider theme={darkTheme}>
+      <CssBaseline /> {/* Applies cosistent base style across browsers */}
       <Box
         sx={{
           minHeight: '100vh',
@@ -69,7 +72,7 @@ const AuthPage: React.FC = () => {
           bgcolor: 'background.default',
         }}
       >
-        <Container maxWidth="sm">
+        <Container maxWidth='sm'>
           <Paper
             elevation={6}
             sx={{
@@ -82,16 +85,22 @@ const AuthPage: React.FC = () => {
             {/* Logo and Title */}
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box
-                component="img"
+                component='img'
                 src={logo}
-                alt="QueryHawk Logo"
-                sx={{ width: 50, height: 50, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(68%) sepia(11%) saturate(2400%) hue-rotate(210deg) brightness(100%) contrast(101%)'}}
+                alt='QueryHawk Logo'
+                sx={{
+                  width: 50,
+                  height: 50,
+                  objectFit: 'contain',
+                  filter:
+                    'brightness(0) saturate(100%) invert(68%) sepia(11%) saturate(2400%) hue-rotate(210deg) brightness(100%) contrast(101%)',
+                }}
               />
-              <Typography 
-                variant="h4" 
-                component="h1"
-                color="white"
-                sx={{ fontWeight: 600}}
+              <Typography
+                variant='h4'
+                component='h1'
+                color='white'
+                sx={{ fontWeight: 600 }}
               >
                 QueryHawk
               </Typography>
@@ -100,10 +109,10 @@ const AuthPage: React.FC = () => {
             {/* GitHub OAuth Button */}
             <Button
               fullWidth
-              variant="outlined"
+              variant='outlined'
               startIcon={<GitHubIcon />}
               onClick={handleGitHubLogin}
-              sx={{ mb: 2, textTransform: "none"}}
+              sx={{ mb: 2, textTransform: 'none' }}
             >
               Continue with GitHub
             </Button>

@@ -52,11 +52,11 @@ class OAuthController {
 
     const tokenData = (await tokenResponse.json()) as GithubTokenResponse;
 
-    console.log('📟 GitHub token response:', {
-      status: tokenResponse.status,
-      error: tokenData.error,
-      error_description: tokenData.error_description,
-    });
+    // console.log('📟 GitHub token response:', {
+    //   status: tokenResponse.status,
+    //   error: tokenData.error,
+    //   error_description: tokenData.error_description,
+    // });
 
     if (tokenData.error) {
       throw this.createError(
@@ -115,7 +115,7 @@ class OAuthController {
   public async handleCallback(req: Request, res: Response): Promise<void> {
     try {
       const { code, provider } = req.body;
-      console.log('🐸 Received request body:', req.body);
+      // console.log('🐸 Received request body:', req.body);
 
       // Validate input
       if (!code) {

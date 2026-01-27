@@ -135,7 +135,7 @@ export const setDatabaseUriToPostgresExporter = async ({
       // 'http://queryhawk-prometheus:9090/-/reload'
       // const response = await fetch('http://prometheus:9090/-/reload', {
       const response = await fetch(
-        'http://queryhawk-prometheus:9090/-/reload',
+        'http://queryhawk-prometheus-1:9090/-/reload',
         {
           method: 'POST',
         }
@@ -207,7 +207,7 @@ export const cleanupExporter = async (userId: string) => {
     // await fs.unlink(`/etc/prometheus/postgres_targets/${userId}.yml`);
 
     // Trigger Prometheus reload
-    await fetch('http://queryhawk-prometheus:9090/-/reload', {
+    await fetch('http://queryhawk-prometheus-1:9090/-/reload', {
       method: 'POST',
     });
   } catch (error) {
