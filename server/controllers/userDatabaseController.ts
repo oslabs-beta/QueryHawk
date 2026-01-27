@@ -1,7 +1,6 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import pg from 'pg';
-import { recordQueryMetrics } from './monitoringController';
-import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
+import { trace, SpanStatusCode, SpanKind } from '@opentelemetry/api';
 
 // Creating a pool for our app database to save metrics.
 const appDbPool = new pg.Pool({
@@ -92,9 +91,6 @@ const userDatabaseController: userDatabaseController = {
       const queryPlan = result.rows[0]['QUERY PLAN'][0];
 
       if (!queryPlan) {
-        recordQueryMetrics({
-          error: 'No query plan retrieved',
-        });
         res.status(500).json({ message: 'Could not retrieve plan data' });
         return;
       }
@@ -129,21 +125,12 @@ const userDatabaseController: userDatabaseController = {
         totalCost: queryPlan['Plan']?.['Total Cost'],
       };
 
-      //Record metrics with prometheus
-      recordQueryMetrics({
-        executionTime: metrics.executionTime,
-        cacheHitRatio: metrics.cacheHitRatio,
-      });
-
       // console.log('Query Metrics:', metrics);
       res.locals.queryMetrics = metrics;
       res.locals.queryName = queryName;
       res.locals.originalQuery = query;
       return next();
     } catch (err) {
-      recordQueryMetrics({
-        error: err instanceof Error ? err.message : 'Unknown query error',
-      });
       console.error('Error running query', err);
       return next({
         log: 'Error in connectDB middleware',
@@ -332,6 +319,7 @@ const userDatabaseController: userDatabaseController = {
           console.log('Analyzing query for user:', userId);
 
           // Get database connection with tracing
+          let uri_string = process.env.DEFAULT_DATABASE_URL;
           const connectionSpan = tracer.startSpan(
             'database.connection.resolve',
             {
@@ -345,7 +333,6 @@ const userDatabaseController: userDatabaseController = {
               [userId]
             );
 
-            let uri_string = process.env.DEFAULT_DATABASE_URL;
             if (userQueryResult.rows.length > 0) {
               uri_string = userQueryResult.rows[0].uri_string;
             }

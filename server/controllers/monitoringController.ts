@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import pg from 'pg';
-import { register, Gauge, Counter, Histogram } from 'prom-client';
+import { register, Gauge, Counter } from 'prom-client';
 
 // Prometheus metrics
 const dbConnectionGauge = new Gauge({
@@ -66,19 +66,6 @@ const dbTupDeleted = new Counter({
 const dbCacheHitRatio = new Gauge({
   name: 'pg_stat_database_cache_hit_ratio',
   help: 'Cache hit ratio for the database',
-  labelNames: ['datname', 'user_id', 'instance'],
-});
-
-const queryExecutionTimeHistogram = new Histogram({
-  name: 'pg_stat_database_query_execution_time_seconds',
-  help: 'Query execution time in seconds',
-  labelNames: ['datname', 'user_id', 'instance'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60],
-});
-
-const queryErrorCounter = new Counter({
-  name: 'pg_stat_database_query_errors_total',
-  help: 'Total number of query errors',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
@@ -202,7 +189,6 @@ const setUserMetricsToError = (userId: string, uriString: string) => {
 
     // Set connection status to 0 (failed)
     dbConnectionGauge.set({ datname, user_id: userId, instance }, 0);
-    queryErrorCounter.inc({ datname, user_id: userId, instance });
   } catch (error) {
     console.error(`Error setting error metrics for user ${userId}:`, error);
   }
@@ -296,48 +282,6 @@ const cleanup = async () => {
   if (multiUserCollectionInterval) {
     clearInterval(multiUserCollectionInterval);
     multiUserCollectionInterval = null;
-  }
-};
-
-// Record query metrics
-const recordQueryMetrics = (data: {
-  executionTime?: number;
-  cacheHitRatio?: number;
-  error?: string;
-  userId?: string;
-  databaseName?: string;
-}) => {
-  if (data.error) {
-    if (data.userId && data.databaseName) {
-      queryErrorCounter.inc({
-        datname: data.databaseName,
-        user_id: data.userId,
-        instance: 'unknown',
-      });
-    }
-    return;
-  }
-
-  if (data.executionTime && data.userId && data.databaseName) {
-    queryExecutionTimeHistogram.observe(
-      {
-        datname: data.databaseName,
-        user_id: data.userId,
-        instance: 'unknown',
-      },
-      data.executionTime / 1000
-    ); // Convert to seconds
-  }
-
-  if (data.cacheHitRatio && data.userId && data.databaseName) {
-    dbCacheHitRatio.set(
-      {
-        datname: data.databaseName,
-        user_id: data.userId,
-        instance: 'unknown',
-      },
-      data.cacheHitRatio
-    );
   }
 };
 
@@ -469,4 +413,4 @@ const initialize = () => {
 // Initialize on load
 initialize();
 
-export { setupMonitoring, getMetrics, recordQueryMetrics, cleanup };
+export { setupMonitoring, getMetrics, cleanup };
