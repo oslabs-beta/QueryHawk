@@ -1,34 +1,63 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import pg from 'pg';
-import monitoringController from './monitoringController';
+import {
+  analyzeQueryWithTracing,
+  compareQueries,
+  ServiceError,
+} from '../services/queryAnalysisService';
+import { pool as appDbPool } from '../db/db';
 
-// Creating a pool for our app database to save metrics.
-const appDbPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// Consistent HTTP error responses for this controller
+const sendErrorResponse = (
+  res: Response,
+  status: number,
+  message: string,
+  details?: string,
+): void => {
+  res.status(status).json({ error: message, message, details });
+};
 
-type userDatabaseController = {
+const sendBadRequest = (res: Response, message: string): void => {
+  sendErrorResponse(res, 400, message);
+};
+
+const sendServerError = (
+  res: Response,
+  message: string,
+  details?: string,
+): void => {
+  sendErrorResponse(res, 500, message, details);
+};
+
+type UserDatabaseController = {
   fetchUserMetrics: RequestHandler;
   saveMetricsToDB: RequestHandler;
   getSavedQueries: RequestHandler;
+  analyzeQuery: RequestHandler;
+  compareQueries: RequestHandler;
+  getQueryHistory: RequestHandler;
 };
 
-const userDatabaseController: userDatabaseController = {
+// Consistent EXPLAIN wrapper for query analysis
+const buildExplainAnalyzeQuery = (sqlQuery: string): string =>
+  `EXPLAIN (ANALYZE true, COSTS true, SETTINGS true, BUFFERS true, WAL true, SUMMARY true, FORMAT JSON) ${sqlQuery}`;
+
+const userDatabaseController: UserDatabaseController = {
   fetchUserMetrics: async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     const { queryName, uri_string, query } = req.body;
 
     if (!queryName || !uri_string || !query) {
       console.log('Missing query name, uri string, or query.');
-      res
-        .status(400)
-        .json({ message: 'query name, uri string and query is required.' });
+      sendBadRequest(res, 'Query name, uri string and query are required.');
       return;
     }
+
     const { Pool } = pg;
+
     try {
       console.log('Connecting to users database...');
       const userDBPool = new Pool({
@@ -38,39 +67,17 @@ const userDatabaseController: userDatabaseController = {
         },
       });
 
-      // formatted
-      const result = await userDBPool.query(
-        'EXPLAIN (ANALYZE true, COSTS true, SETTINGS true, BUFFERS true, WAL true, SUMMARY true, FORMAT JSON)' +
-          `${query}`
-      );
+      const result = await userDBPool.query(buildExplainAnalyzeQuery(query));
 
       // once done with pool we close connection to save resources.
       await userDBPool.end();
 
-      // used to see full result of JSON
-      // console.log(
-      //   'EXPLAIN ANALYZE Result:',
-      //   JSON.stringify(result.rows, null, 2)
-      // );
-
       const queryPlan = result.rows[0]['QUERY PLAN'][0];
 
       if (!queryPlan) {
-        monitoringController.recordQueryMetrics({
-          error: 'No query plan retrieved',
-        });
-        res.status(500).json({ message: 'Could not retrieve plan data' });
+        sendServerError(res, 'Could not retrieve plan data');
         return;
       }
-
-      // // Log the full result for inspection (debugging purposes)
-      // console.log(
-      //   'Settings Field:',
-      //   JSON.stringify(queryPlan['Settings'], null, 2)
-      // );
-
-      // debugging
-      // console.log('Query Plan:', JSON.stringify(queryPlan, null, 2));
 
       const sharedHitBlocks = queryPlan['Planning']?.['Shared Hit Blocks'] || 0;
       const sharedReadBlocks =
@@ -81,10 +88,10 @@ const userDatabaseController: userDatabaseController = {
           : 0;
 
       const metrics = {
-        executionTime: queryPlan['Execution Time'], // This is the execution time in milliseconds
-        planningTime: queryPlan['Planning Time'], // This is the planning time in milliseconds
-        rowsReturned: queryPlan['Plan']?.['Actual Rows'], // Rows actually returned
-        actualLoops: queryPlan['Plan']?.['Actual Loops'], // # of loops in the plan
+        executionTime: queryPlan['Execution Time'],
+        planningTime: queryPlan['Planning Time'],
+        rowsReturned: queryPlan['Plan']?.['Actual Rows'],
+        actualLoops: queryPlan['Plan']?.['Actual Loops'],
         sharedHitBlocks: queryPlan['Planning']?.['Shared Hit Blocks'],
         sharedReadBlocks: queryPlan['Planning']?.['Shared Read Blocks'],
         workMem: queryPlan['Settings']?.['work_mem'],
@@ -93,21 +100,11 @@ const userDatabaseController: userDatabaseController = {
         totalCost: queryPlan['Plan']?.['Total Cost'],
       };
 
-      //Record metrics with prometheus
-      monitoringController.recordQueryMetrics({
-        executionTime: metrics.executionTime,
-        cacheHitRatio: metrics.cacheHitRatio,
-      });
-
-      // console.log('Query Metrics:', metrics);
       res.locals.queryMetrics = metrics;
       res.locals.queryName = queryName;
       res.locals.originalQuery = query;
       return next();
     } catch (err) {
-      monitoringController.recordQueryMetrics({
-        error: err instanceof Error ? err.message : 'Unknown query error',
-      });
       console.error('Error running query', err);
       return next({
         log: 'Error in connectDB middleware',
@@ -117,30 +114,29 @@ const userDatabaseController: userDatabaseController = {
     }
   },
 
-  // This method will save the metrics into the user's metrics table
   saveMetricsToDB: async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
-    const { queryName, originalQuery, queryMetrics } = res.locals; // Get metrics from previous middleware
+    const { queryName, originalQuery, queryMetrics } = res.locals;
     const userId = res.locals.userId;
 
     if (!queryName || !queryMetrics || !userId || !originalQuery) {
-      res.status(400).json({
-        message: 'Query name, Metrics, userId, or query text are missing.',
-      });
+      sendBadRequest(
+        res,
+        'Query name, metrics, userId, or query text are missing.',
+      );
       return;
     }
 
     try {
       const queryResult = await appDbPool.query(
         'INSERT INTO queries (query_name, query_text, user_id, created_at) VALUES ($1, $2, $3, NOW()) RETURNING id',
-        [queryName, originalQuery, userId]
+        [queryName, originalQuery, userId],
       );
 
       const queryId = queryResult.rows[0].id;
-      // Save the metrics into the database
       await appDbPool.query(
         `INSERT INTO metrics (
           execution_time,
@@ -170,9 +166,9 @@ const userDatabaseController: userDatabaseController = {
           parseFloat(queryMetrics.startupCost) || 0,
           parseFloat(queryMetrics.totalCost) || 0,
           queryId,
-        ]
+        ],
       );
-      // returning queryMetrics to front end
+
       res.status(200).json(queryMetrics);
     } catch (err) {
       console.error('Error saving metrics', err);
@@ -183,21 +179,20 @@ const userDatabaseController: userDatabaseController = {
       });
     }
   },
-  // create getSavedQueries method
+
   getSavedQueries: async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     try {
       const userId = res.locals.userId;
 
       if (!userId) {
-        res.status(400).json({ message: 'User ID is required' });
+        sendBadRequest(res, 'User ID is required');
         return;
       }
 
-      // Query to get all saved queries with their metrics for this user
       const queryResult = await appDbPool.query(
         `
         SELECT 
@@ -220,10 +215,9 @@ const userDatabaseController: userDatabaseController = {
         WHERE q.user_id = $1
         ORDER BY q.created_at DESC
       `,
-        [userId]
+        [userId],
       );
 
-      // Transform results to match frontend expected format
       const savedQueries = queryResult.rows.map((row) => ({
         id: row.id,
         queryName: row.queryName,
@@ -232,11 +226,11 @@ const userDatabaseController: userDatabaseController = {
         metrics: {
           executionTime: parseFloat(row.executionTime),
           planningTime: parseFloat(row.planningTime),
-          rowsReturned: parseInt(row.rowsReturned),
-          actualLoops: parseInt(row.actualLoops),
-          sharedHitBlocks: parseInt(row.sharedHitBlocks),
-          sharedReadBlocks: parseInt(row.sharedReadBlocks),
-          workMem: parseInt(row.workMem) || 0,
+          rowsReturned: parseInt(row.rowsReturned, 10),
+          actualLoops: parseInt(row.actualLoops, 10),
+          sharedHitBlocks: parseInt(row.sharedHitBlocks, 10),
+          sharedReadBlocks: parseInt(row.sharedReadBlocks, 10),
+          workMem: parseInt(row.workMem, 10) || 0,
           cacheHitRatio: parseFloat(row.cacheHitRatio),
           startupCost: parseFloat(row.startupCost),
           totalCost: parseFloat(row.totalCost),
@@ -251,6 +245,95 @@ const userDatabaseController: userDatabaseController = {
         status: 500,
         message: { err: 'Failed to fetch saved queries.' },
       });
+    }
+  },
+
+  analyzeQuery: async (req: Request, res: Response): Promise<void> => {
+    const { sqlQuery } = req.body;
+    const userId = res.locals.userId;
+
+    try {
+      if (!sqlQuery) {
+        sendBadRequest(res, 'SQL query is required.');
+        return;
+      }
+
+      console.log('Analyzing query for user:', userId);
+
+      const { analysis, insights } = await analyzeQueryWithTracing(
+        appDbPool,
+        userId,
+        sqlQuery,
+      );
+
+      res.json({ analysis, insights });
+    } catch (error) {
+      console.error('Query analysis failed:', error);
+
+      if (error instanceof ServiceError && error.statusCode === 400) {
+        sendBadRequest(res, error.message);
+        return;
+      }
+
+      sendServerError(
+        res,
+        'Query analysis failed',
+        error instanceof Error ? error.message : undefined,
+      );
+    }
+  },
+
+  compareQueries: async (req: Request, res: Response): Promise<void> => {
+    const { query1, query2 } = req.body;
+    const userId = res.locals.userId;
+
+    if (!query1 || !query2) {
+      sendBadRequest(res, 'Both queries are required for comparison.');
+      return;
+    }
+
+    try {
+      const comparison = await compareQueries(
+        appDbPool,
+        userId,
+        query1,
+        query2,
+      );
+
+      res.json(comparison);
+    } catch (error) {
+      console.error('Query comparison failed:', error);
+      sendServerError(
+        res,
+        'Query comparison failed',
+        error instanceof Error ? error.message : undefined,
+      );
+    }
+  },
+
+  getQueryHistory: async (req: Request, res: Response): Promise<void> => {
+    const { queryHash } = req.params;
+    const userId = res.locals.userId;
+
+    try {
+      const queryResult = await appDbPool.query(
+        `SELECT q.query_text, m.*, q.created_at
+         FROM queries q
+         JOIN metrics m ON q.id = m.query_id
+         WHERE q.user_id = $1 AND q.query_text = $2
+         ORDER BY q.created_at DESC
+         LIMIT 10`,
+        [userId, queryHash],
+      );
+
+      res.json(queryResult.rows);
+    } catch (error) {
+      console.error('Error fetching query history:', error);
+      sendServerError(
+        res,
+        'Failed to fetch query history',
+        error instanceof Error ? error.message : undefined,
+      );
     }
   },
 };

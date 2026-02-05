@@ -1,0 +1,27 @@
+// Server configuration
+logging {
+level  = "info"
+format = "logfmt"
+}
+
+// Prometheus metrics scraping from backend (multi-user)
+prometheus.scrape "backend_multi_user" {
+targets = [{
+__address__ = "backend:4002",
+}]
+forward_to = [prometheus.remote_write.mimir.receiver]
+metrics_path = "/api/metrics"
+scrape_interval = "15s"
+}
+
+// Remote write to Mimir
+prometheus.remote_write "mimir" {
+endpoint {
+url = "http://mimir:9009/api/v1/push"
+}
+
+external_labels = {
+cluster = "queryhawk",
+environment = "development",
+}
+}

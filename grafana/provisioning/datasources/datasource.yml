@@ -13,15 +13,15 @@ datasources:
     type: prometheus
     access: proxy # How Grafana accesses the data source
     uid: prometheus
-    url: http://prometheus:9090 # Internal Docker network URL
-    isDefault: true # Make this the default data source
+    url: http://mimir:9009 # Internal Docker network URL for Mimir
+    isDefault: false # Not default since Alloy is the primary datasource
     jsonData:
       timeInterval: 15s # Minimum time interval between data points
-      queryTimeout: "60s" # Maximum time for queries to run
-      httpMethod: "POST" # HTTP method for queries
+      queryTimeout: '60s' # Maximum time for queries to run
+      httpMethod: 'POST' # HTTP method for queries
     editable: true # Allow editing through the UI
     version: 1
-# PostgreSQL Data Source
+  # PostgreSQL Data Source
   - name: PostgreSQL
     type: postgres
     url: supabase:5432
@@ -29,7 +29,7 @@ datasources:
     secureJsonData:
       password: ${POSTGRES_PASSWORD}
     jsonData:
-      sslmode: "disable" # Disable SSL for local development
+      sslmode: 'disable' # Disable SSL for local development
       maxOpenConns: 100 # Maximum number of open connections
       maxIdleConns: 100 # Maximum number of idle connections
       connMaxLifetime: 14400 # Maximum connection lifetime in seconds
@@ -37,7 +37,7 @@ datasources:
       timescaledb: false # TimescaleDB support disabled
     editable: true
     version: 1
-# Jaeger Data Source for distributed tracing
+  # Jaeger Data Source for distributed tracing
   - name: Jaeger
     type: jaeger
     access: proxy

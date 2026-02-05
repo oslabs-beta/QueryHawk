@@ -1,9 +1,6 @@
-version: '3.7'
+version: '3.8'
 
-#ALL VOLUMES AND COMMANDS AND BUILDS WILL NEED TO BE UPDATED WITH ACCURATE
-#LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
-#FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
-#and will need to add opentelemetry
+# Docker Compose configuration for QueryHawk with Grafana Alloy
 
 services: # This section defines all the services (containers) we want to run
   # Supabase - Our main database and auth service
@@ -31,7 +28,7 @@ services: # This section defines all the services (containers) we want to run
   #   ports:
   #     - '9187:9187'
   #   networks:
-  #     - queryhawk_monitoring_network
+  #     - queryhawk_monitoring_networkhec
   #   depends_on:
   #     - test_user_db
 
@@ -42,6 +39,9 @@ services: # This section defines all the services (containers) we want to run
       dockerfile: server/Dockerfile # Builds using server folder's Dockerfile
     ports:
       - '4002:4002' # API will be available on localhost:4002
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       # All these volume mappings enable development with hot reloading
       - ./server:/app/server # Maps local server code to container
@@ -50,7 +50,7 @@ services: # This section defines all the services (containers) we want to run
       - ./tsconfig.json:/app/tsconfig.json # Maps TypeScript config
       - /app/node_modules # Preserves container's node_modules
       - /var/run/docker.sock:/var/run/docker.sock
-      - prometheus_targets:/var/prometheus/postgres_targets
+      - ./grafana-alloy/targets:/app/grafana-alloy/targets
     env_file:
       - .env
     environment:
@@ -62,11 +62,17 @@ services: # This section defines all the services (containers) we want to run
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4316 # OTLP endpoint for OpenTelemetry
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:14318/v1/traces # OTLP HTTP endpoint for Grafana Alloy
+      - OTEL_SERVICE_NAME=queryhawk-backend
+      - OTEL_SERVICE_VERSION=1.0.0
     depends_on:
-      - otel-collector
+      - jaeger
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
@@ -83,38 +89,73 @@ services: # This section defines all the services (containers) we want to run
       - COLLECTOR_OTLP_ENABLED=true
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
-  # Prometheus - Collects and stores our metrics
-  prometheus:
-    image: prom/prometheus # Official Prometheus image
+  # Loki - Log aggregation and querying
+  loki:
+    image: grafana/loki:2.9.0
     ports:
-      - '9090:9090' # Prometheus web interface
+      - '3100:3100' # Loki HTTP API
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Mount your config file
-      - prometheus_data:/prometheus # For prometheus data
-      - prometheus_targets:/var/prometheus/postgres_targets
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.enable-lifecycle'
-    container_name: queryhawk-prometheus-1
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/loki
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
-  otel-collector:
-    image: otel/opentelemetry-collector
+  # Mimir - Long-term metrics storage and Prometheus-compatible API
+  mimir:
+    image: grafana/mimir:2.10.0
     ports:
-      - '4316:4316' # OTLP gRPC receiver
-      - '4319:4319' # OTLP HTTP receiver
-      - '8889:8889' # Prometheus metrics port
+      - '9009:9009' # Mimir HTTP API
+      - '9095:9095' # Mimir gRPC API
+    command: -config.file=/etc/mimir/mimir.yaml
     volumes:
-      #left side is file in my project folder and right is where it appears in the container
-      - ./opentelemetry/otel-config.yml:/etc/otel/config.yml
-    command: ['--config=/etc/otel/config.yml']
+      - ./mimir/mimir.yaml:/etc/mimir/mimir.yaml
+      - mimir_data:/data
+    environment:
+      - MIMIR_CONFIG=/etc/mimir/mimir.yaml
+    networks:
+      - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Grafana Alloy - Metrics collection and processing
+  grafana-alloy:
+    build:
+      context: ./grafana-alloy
+      dockerfile: Dockerfile
+    ports:
+      - '12345:12345' # Alloy HTTP port
+      - '12346:12346' # Alloy gRPC port
+      - '14317:14317' # OTLP gRPC receiver
+      - '14318:14318' # OTLP HTTP receiver
+    volumes:
+      - ./grafana-alloy/config.river:/etc/alloy/config.river
+      - ./grafana-alloy/targets:/etc/alloy/targets
+      - ./grafana-alloy/targets:/app/targets
     depends_on:
-      - jaeger
-      - prometheus
+      - mimir
+      - loki
+      - grafana
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # Prometheus service removed - Alloy handles metrics collection and sends to Grafana
+
   # Grafana - Creates dashboards from our metrics
   grafana:
     image: grafana/grafana # Official Grafana image
@@ -136,9 +177,13 @@ services: # This section defines all the services (containers) we want to run
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
-      - prometheus # Needs Prometheus to start first
+      - backend # Needs backend to start first
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   # React Frontend - Our user interface
   frontend:
@@ -163,15 +208,19 @@ services: # This section defines all the services (containers) we want to run
       - grafana # Ensures Grafana is available first
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
+# All services share a single bridge network for discovery (e.g., grafana-alloy, loki, mimir).
 networks:
   queryhawk_monitoring_network:
     name: queryhawk_monitoring_network
     driver: bridge
   # Persistent storage for our services
 volumes:
-  prometheus_config: #Prometheus configuration files
-  prometheus_data: # Metrics storage
-  prometheus_targets: #Dynamic postgres exporter targets
   grafana_data: # Dashboard configurations
+  loki_data: # Loki data
+  mimir_data: # Mimir data
 

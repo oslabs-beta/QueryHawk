@@ -1,342 +1,402 @@
-import { NextFunction, Request, Response } from 'express';
-import pkg from 'pg';
-const { Pool } = pkg;
-import promClient from 'prom-client';
+import { Request, Response } from 'express';
+import pg from 'pg';
+import { register, Gauge, Counter } from 'prom-client';
+import { pool as appDbPool, closePool } from '../db/db';
 
-const register = new promClient.Registry();
-
-// Basic connection metrics
-const dbConnectionGauge = new promClient.Gauge({
-  name: 'database_connection_status',
-  help: 'Current database connection status (1 for connected, 0 for disconnected)',
-  labelNames: ['datname'], // Changed to match postgres_exporter
-});
-
-const dbConnectionCounter = new promClient.Counter({
-  name: 'database_connection_attempts_total',
-  help: 'Total number of database connection attempts',
-  labelNames: ['status'], // This one is fine as is - it's not a postgres metric
-});
-
-// Database performance metrics
-const dbTransactionRate = new promClient.Gauge({
-  name: 'pg_stat_database_xact_commit',
-  help: 'Number of transactions per second',
-  labelNames: ['datname'], // Changed to match postgres_exporter
-});
-
-const dbCacheHitRatio = new promClient.Gauge({
-  name: 'pg_stat_database_blks_hit',
-  help: 'Number of blocks hit in cache',
-  labelNames: ['datname'], // Already correct
-});
-
-const dbActiveConnections = new promClient.Gauge({
-  name: 'database_active_connections',
-  help: 'Number of active database connections',
-  labelNames: ['datname'], // Changed to match postgres_exporter
-});
-
-const dbBlocksRead = new promClient.Gauge({
-  name: 'pg_stat_database_blks_read',
-  help: 'Number of blocks read from disk',
-  labelNames: ['datname'],
-});
-
-const queryExecutionTimeHistogram = new promClient.Histogram({
-  name: 'query_execution_duration_seconds',
-  help: 'Histogram of query execution times',
-  labelNames: ['query_type'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10], // Adjust buckets as needed
-});
-
-const queryErrorCounter = new promClient.Counter({
-  name: 'query_errors_total',
-  help: 'Total number of query errors',
-  labelNames: ['query_type', 'error_type'],
-});
-
-// Register all metrics
-register.registerMetric(dbConnectionGauge);
-register.registerMetric(dbConnectionCounter);
-register.registerMetric(dbTransactionRate);
-register.registerMetric(dbCacheHitRatio);
-register.registerMetric(dbActiveConnections);
-register.registerMetric(dbBlocksRead);
-register.registerMetric(queryExecutionTimeHistogram);
-register.registerMetric(queryErrorCounter);
-
-let currentDatabaseUrl: string = '';
-let pool: pkg.Pool | null = null;
-let metricsInterval: NodeJS.Timeout | null = null;
-
-async function collectMetrics(pool: pkg.Pool, databaseUrl: string) {
-  try {
-    const client = await pool.connect();
-    try {
-      // Get current database name
-      const dbNameResult = await client.query(
-        'SELECT current_database() as dbname'
-      );
-      const dbName = dbNameResult.rows[0]?.dbname || 'postgres';
-
-      console.log('Currently collecting metrics from database:', dbName);
-      console.log(
-        'Using connection URL:',
-        databaseUrl.replace(/:[^:@]+@/, ':****@')
-      );
-
-      // Get transaction rate
-      const txnResult = await client.query(`
-        SELECT xact_commit + xact_rollback AS total_transactions
-        FROM pg_stat_database
-        WHERE datname = current_database();
-      `);
-      const transactionCount = parseFloat(
-        txnResult.rows[0]?.total_transactions
-      );
-      if (!isNaN(transactionCount)) {
-        dbTransactionRate.set({ datname: dbName }, transactionCount);
-      }
-
-      // Get cache hit ratio
-      const cacheResult = await client.query(`
-        SELECT 
-          sum(heap_blks_hit) as blocks_hit,
-          sum(heap_blks_read) as blocks_read
-        FROM pg_statio_user_tables;
-      `);
-      const blocksHit = parseFloat(cacheResult.rows[0]?.blocks_hit);
-      const blocksRead = parseFloat(cacheResult.rows[0]?.blocks_read);
-
-      if (!isNaN(blocksHit)) {
-        dbCacheHitRatio.set({ datname: dbName }, blocksHit);
-      }
-      if (!isNaN(blocksRead)) {
-        dbBlocksRead.set({ datname: dbName }, blocksRead);
-      }
-
-      // Get active connections
-      const connectionsResult = await client.query(`
-        SELECT count(*)::integer as count
-        FROM pg_stat_activity
-        WHERE state = 'active';
-      `);
-      const activeConnections = parseInt(connectionsResult.rows[0]?.count);
-      if (!isNaN(activeConnections)) {
-        dbActiveConnections.set({ datname: dbName }, activeConnections);
-      }
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('Error collecting metrics:', err);
-    dbConnectionGauge.set({ datname: 'postgres' }, 0);
-  }
-}
-
-async function cleanup() {
-  if (metricsInterval) {
-    clearInterval(metricsInterval);
-    metricsInterval = null;
-  }
-  if (pool) {
-    await pool.end();
-    dbConnectionGauge.set({ datname: 'postgres' }, 0);
-  }
-}
-
-function setupMetricsCollection(databaseUrl: string) {
-  metricsInterval = setInterval(() => {
-    if (pool) {
-      collectMetrics(pool, databaseUrl).catch((err) => {
-        console.error('Error in metrics collection interval:', err);
-      });
-    }
-  }, 15000);
-}
-
-function getErrorMessage(err: Error): string {
-  if (err.message.includes('SASL')) {
-    return 'Authentication failed. Please check your credentials.';
-  }
-  if (err.message.includes('self-signed certificate')) {
-    return 'SSL certificate validation failed. Try adding ?sslmode=require to your connection string.';
-  }
-  if (err.message.includes('connect ECONNREFUSED')) {
-    return 'Could not connect to database. Please check if the database is running and accessible.';
-  }
-  if (err.message.includes('Connection timeout')) {
-    return 'Connection timed out. Please check your database URL and network connection.';
-  }
-  return err.message;
-}
-
-const monitoringController = {
-  recordQueryMetrics: (metrics: {
-    executionTime?: number;
-    cacheHitRatio?: number;
-    error?: string;
-  }) => {
-    try {
-      // Record execution time in Prometheus histogram
-      if (metrics.executionTime) {
-        queryExecutionTimeHistogram.observe(
-          { query_type: 'user_query' },
-          metrics.executionTime / 1000 // Convert milliseconds to seconds
-        );
-      }
-
-      // Record cache hit ratio
-      if (metrics.cacheHitRatio !== undefined) {
-        dbCacheHitRatio.set({ datname: 'postgres' }, metrics.cacheHitRatio);
-      }
-
-      // Track query errors
-      if (metrics.error) {
-        queryErrorCounter.inc({
-          query_type: 'user_query',
-          error_type: metrics.error,
-        });
-      }
-    } catch (err) {
-      console.error('Error recording query metrics:', err);
-    }
-  },
-
-  setupMonitoring: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    const { databaseUrl } = req.body;
-    console.log('API ENDPOINT HIT');
-    console.log('Setting up monitoring for:', databaseUrl);
-    console.log(
-      'Request received with database URL:',
-      databaseUrl.replace(/:[^:@]+@/, ':****@')
-    );
-    console.log('Attempting to connect to database...');
-
-    if (!databaseUrl) {
-      dbConnectionCounter.inc({ status: 'failed_missing_url' });
-      queryErrorCounter.inc({
-        query_type: 'connection',
-        error_type: 'missing_url',
-      });
-      res.status(400).json({ message: 'Database URI string is required.' });
-      return;
-    }
-
-    // Validate URL format
-    try {
-      new URL(databaseUrl);
-    } catch (err) {
-      dbConnectionCounter.inc({ status: 'failed_invalid_url' });
-      queryErrorCounter.inc({
-        query_type: 'connection',
-        error_type: 'invalid_url',
-      });
-      res.status(400).json({ message: 'Invalid database URL format.' });
-      return;
-    }
-
-    try {
-      // Clean up existing resources
-      await cleanup();
-
-      // Create connection configuration
-      const config = {
-        connectionString: databaseUrl,
-        max: 20,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
-        ssl: {
-          rejectUnauthorized: false,
-          sslmode: 'require',
-        },
-      };
-
-      console.log('Connecting with config:', {
-        ...config,
-        connectionString: config.connectionString.replace(/:[^:@]+@/, ':****@'),
-      });
-
-      // Create new connection pool
-      pool = new Pool(config);
-
-      // Test connection with timeout
-      const connectionTest = await Promise.race([
-        pool.connect(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Connection timeout')), 10000)
-        ),
-      ]);
-
-      const client = connectionTest as pkg.PoolClient;
-
-      try {
-        const result = await client.query('SELECT version()');
-        console.log('Database version:', result.rows[0].version);
-        currentDatabaseUrl = databaseUrl;
-
-        // Update metrics
-        dbConnectionCounter.inc({ status: 'success' });
-        dbConnectionGauge.set({ datname: 'postgres' }, 1);
-
-        // Setup metrics collection
-        setupMetricsCollection(databaseUrl);
-
-        // Collect metrics immediately
-        await collectMetrics(pool, databaseUrl);
-
-        res.status(200).json({
-          success: true,
-          message: 'Database monitoring connection established successfully',
-          url: databaseUrl.replace(/:[^:@]+@/, ':****@'),
-        });
-      } finally {
-        client.release();
-      }
-    } catch (err) {
-      console.error('Detailed connection error:', err);
-      dbConnectionCounter.inc({ status: 'failed' });
-      if (databaseUrl) {
-        dbConnectionGauge.set({ datname: 'postgres' }, 0);
-      }
-
-      let errorMessage = 'Failed to set up database monitoring.';
-      if (err instanceof Error) {
-        errorMessage = getErrorMessage(err);
-        // Record the specific error in Prometheus
-        queryErrorCounter.inc({
-          query_type: 'connection',
-          error_type: errorMessage,
-        });
-      }
-
-      return next({
-        log: 'Error in setupMonitoring middleware',
-        status: 500,
-        message: { err: errorMessage },
-      });
-    }
-  },
-
-  // Modified getMetrics endpoint
-  getMetrics: async (_req: Request, res: Response): Promise<void> => {
-    try {
-      // Set correct content type for Prometheus
-      res.set('Content-Type', 'text/plain; version=0.0.4');
-
-      const metrics = await register.metrics(); // Get metrics from the registry
-      res.end(metrics);
-    } catch (err) {
-      console.error('Error collecting metrics:', err);
-      res.status(500).send('Error collecting metrics');
-    }
-  },
+// Consistent HTTP error responses for this controller
+const sendErrorResponse = (
+  res: Response,
+  status: number,
+  message: string,
+  details?: string,
+): void => {
+  res.status(status).json({ error: message, message, details });
 };
 
-export { register };
-export default monitoringController;
+// Prometheus metrics
+const dbConnectionGauge = new Gauge({
+  name: 'pg_stat_database_numbackends',
+  help: 'Number of active connections',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbConnectionCounter = new Counter({
+  name: 'pg_stat_database_xact_commit_total',
+  help: 'Total number of transactions committed',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTransactionRollback = new Counter({
+  name: 'pg_stat_database_xact_rollback_total',
+  help: 'Total number of transactions rolled back',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbBlocksHit = new Counter({
+  name: 'pg_stat_database_blks_hit_total',
+  help: 'Total number of disk blocks found in buffer cache',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbBlocksRead = new Counter({
+  name: 'pg_stat_database_blks_read_total',
+  help: 'Total number of disk blocks read',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTupReturned = new Counter({
+  name: 'pg_stat_database_tup_returned_total',
+  help: 'Total number of rows returned by queries',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTupFetched = new Counter({
+  name: 'pg_stat_database_tup_fetched_total',
+  help: 'Total number of rows fetched by queries',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTupInserted = new Counter({
+  name: 'pg_stat_database_tup_inserted_total',
+  help: 'Total number of rows inserted by queries',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTupUpdated = new Counter({
+  name: 'pg_stat_database_tup_updated_total',
+  help: 'Total number of rows updated by queries',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbTupDeleted = new Counter({
+  name: 'pg_stat_database_tup_deleted_total',
+  help: 'Total number of rows deleted by queries',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const dbCacheHitRatio = new Gauge({
+  name: 'pg_stat_database_cache_hit_ratio',
+  help: 'Cache hit ratio for the database',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+// User connection pools management (per-user pools for metrics collection)
+const userConnectionPools: Map<string, pg.Pool> = new Map();
+let multiUserCollectionInterval: NodeJS.Timeout | null = null;
+
+// Collect metrics from a specific user's database
+const collectUserDatabaseMetrics = async (
+  pool: pg.Pool,
+  userId: string,
+  uriString: string,
+) => {
+  try {
+    // Extract hostname and port from URI for instance label
+    const url = new URL(uriString);
+    const instance = `${url.hostname}:${url.port}`;
+
+    // Get database name
+    const dbNameResult = await pool.query(
+      'SELECT current_database() as datname',
+    );
+    const datname = dbNameResult.rows[0]?.datname || 'unknown';
+
+    // Get pg_stat_database stats
+    const statsResult = await pool.query(
+      `
+      SELECT 
+        numbackends,
+        xact_commit,
+        xact_rollback,
+        blks_hit,
+        blks_read,
+        tup_returned,
+        tup_fetched,
+        tup_inserted,
+        tup_updated,
+        tup_deleted
+      FROM pg_stat_database 
+      WHERE datname = $1
+    `,
+      [datname],
+    );
+
+    if (statsResult.rows.length > 0) {
+      const stats = statsResult.rows[0];
+
+      // Set metrics with user-specific labels
+      dbConnectionGauge.set(
+        { datname, user_id: userId, instance },
+        stats.numbackends,
+      );
+      dbConnectionCounter.inc(
+        { datname, user_id: userId, instance },
+        stats.xact_commit,
+      );
+      dbTransactionRollback.inc(
+        { datname, user_id: userId, instance },
+        stats.xact_rollback,
+      );
+      dbBlocksHit.inc({ datname, user_id: userId, instance }, stats.blks_hit);
+      dbBlocksRead.inc({ datname, user_id: userId, instance }, stats.blks_read);
+      dbTupReturned.inc(
+        { datname, user_id: userId, instance },
+        stats.tup_returned,
+      );
+      dbTupFetched.inc(
+        { datname, user_id: userId, instance },
+        stats.tup_fetched,
+      );
+      dbTupInserted.inc(
+        { datname, user_id: userId, instance },
+        stats.tup_inserted,
+      );
+      dbTupUpdated.inc(
+        { datname, user_id: userId, instance },
+        stats.tup_updated,
+      );
+      dbTupDeleted.inc(
+        { datname, user_id: userId, instance },
+        stats.tup_deleted,
+      );
+
+      // Calculate cache hit ratio
+      const totalBlocks = stats.blks_hit + stats.blks_read;
+      const cacheHitRatio =
+        totalBlocks > 0 ? (stats.blks_hit / totalBlocks) * 100 : 0;
+      dbCacheHitRatio.set(
+        { datname, user_id: userId, instance },
+        cacheHitRatio,
+      );
+    }
+
+    // Set connection status to 1 (successful)
+    dbConnectionGauge.set({ datname, user_id: userId, instance }, 1);
+  } catch (error) {
+    console.error(`Error collecting metrics for user ${userId}:`, error);
+    setUserMetricsToError(userId, uriString);
+  }
+};
+
+// Set metrics to error state for failed user databases
+const setUserMetricsToError = (userId: string, uriString: string) => {
+  try {
+    const url = new URL(uriString);
+    const instance = `${url.hostname}:${url.port}`;
+    const datname = 'unknown';
+
+    // Set connection status to 0 (failed)
+    dbConnectionGauge.set({ datname, user_id: userId, instance }, 0);
+  } catch (error) {
+    console.error(`Error setting error metrics for user ${userId}:`, error);
+  }
+};
+
+// Collect metrics from all user databases
+const collectAllUserMetrics = async () => {
+  try {
+    // Get all active user connections
+    const result = await appDbPool.query(`
+      SELECT user_id, uri_string 
+      FROM user_connections 
+      WHERE is_active = true
+    `);
+
+    // Create/update connection pools for each user
+    for (const row of result.rows) {
+      const { user_id, uri_string } = row;
+      const userId = user_id.toString();
+
+      // Create new pool if it doesn't exist
+      if (!userConnectionPools.has(userId)) {
+        try {
+          const newPool = new pg.Pool({
+            connectionString: uri_string,
+            ssl: {
+              rejectUnauthorized: false,
+            },
+          });
+          userConnectionPools.set(userId, newPool);
+        } catch (error) {
+          console.error(`Error creating pool for user ${userId}:`, error);
+          setUserMetricsToError(userId, uri_string);
+          continue;
+        }
+      }
+
+      const pool = userConnectionPools.get(userId);
+      if (pool) {
+        await collectUserDatabaseMetrics(pool, userId, uri_string);
+      }
+    }
+  } catch (error) {
+    console.error('Error collecting all user metrics:', error);
+  }
+};
+
+// Start multi-user metrics collection on a fixed interval
+const startMultiUserMetricsCollection = () => {
+  if (multiUserCollectionInterval) {
+    return; // Already running
+  }
+
+  multiUserCollectionInterval = setInterval(async () => {
+    await collectAllUserMetrics();
+  }, 15000); // 15 seconds interval
+
+  console.log('Multi-user metrics collection started with 15s interval');
+};
+
+// Cleanup function
+const cleanup = async () => {
+  // Close all user connection pools
+  for (const [userId, pool] of userConnectionPools) {
+    try {
+      await pool.end();
+      console.log(`Closed connection pool for user ${userId}`);
+    } catch (error) {
+      console.error(`Error closing pool for user ${userId}:`, error);
+    }
+  }
+  userConnectionPools.clear();
+
+  // Close app database pool
+  try {
+    await closePool();
+    console.log('Closed app database pool');
+  } catch (error) {
+    console.error('Error closing app database pool:', error);
+  }
+
+  // Clear interval
+  if (multiUserCollectionInterval) {
+    clearInterval(multiUserCollectionInterval);
+    multiUserCollectionInterval = null;
+  }
+};
+
+// Setup monitoring for a new user connection
+const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, databaseUrl } = req.body;
+
+    if (!userId || !databaseUrl) {
+      sendErrorResponse(res, 400, 'userId and databaseUrl are required');
+      return;
+    }
+
+    // Test the user's database connection
+    let testPool: pg.Pool | null = null;
+    try {
+      testPool = new pg.Pool({
+        connectionString: databaseUrl,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      // Test connection
+      await testPool.query('SELECT 1');
+      await testPool.end();
+
+      // Store/update user connection in database
+      await appDbPool.query(
+        `
+        INSERT INTO user_connections (user_id, uri_string, is_active) 
+        VALUES ($1, $2, true)
+        ON CONFLICT (user_id) 
+        DO UPDATE SET 
+          uri_string = $2, 
+          is_active = true, 
+          updated_at = NOW()
+      `,
+        [userId, databaseUrl],
+      );
+
+      // Start multi-user collection if not already running
+      startMultiUserMetricsCollection();
+
+      // Collect metrics for this user immediately
+      const userPool = new pg.Pool({
+        connectionString: databaseUrl,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      });
+      userConnectionPools.set(userId.toString(), userPool);
+      await collectUserDatabaseMetrics(
+        userPool,
+        userId.toString(),
+        databaseUrl,
+      );
+
+      res.json({
+        success: true,
+        message: 'Database connection established and monitoring started',
+      });
+    } catch (error) {
+      if (testPool) {
+        await testPool.end();
+      }
+
+      // Store failed connection attempt
+      await appDbPool.query(
+        `
+        INSERT INTO user_connections (user_id, uri_string, is_active) 
+        VALUES ($1, $2, false)
+        ON CONFLICT (user_id) 
+        DO UPDATE SET 
+          uri_string = $2, 
+          is_active = false, 
+          updated_at = NOW()
+      `,
+        [userId, databaseUrl],
+      );
+
+      console.error('Database connection test failed:', error);
+      sendErrorResponse(
+        res,
+        500,
+        'Failed to connect to database',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Error in setupMonitoring:', error);
+    sendErrorResponse(
+      res,
+      500,
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+  }
+};
+
+// Get metrics endpoint
+const getMetrics = async (req: Request, res: Response) => {
+  try {
+    // Collect fresh metrics from all users before serving
+    await collectAllUserMetrics();
+
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    console.error('Error getting metrics:', error);
+    sendErrorResponse(
+      res,
+      500,
+      'Failed to get metrics',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+  }
+};
+
+// Initialize function
+const initialize = () => {
+  startMultiUserMetricsCollection();
+};
+
+// Initialize on load
+initialize();
+
+export { setupMonitoring, getMetrics, cleanup };

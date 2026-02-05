@@ -20,6 +20,7 @@ import QueryHistory, { SavedQuery } from './QueryHistory'; // component that you
 import QueryComparisonForm from './QueryComparisonForm';
 import QueryComparisonPage from './QueryComparisonPage';
 import TestQueryForm from './TestQueryForm';
+import LeanQueryAnalyzer from './LeanQueryAnalyzer';
 
 // Import the same dark theme configuration as before
 const darkTheme = createTheme({
@@ -47,6 +48,10 @@ const TestQueryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [queryMetrics, setQueryMetrics] = useState<QueryMetrics | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  // State for Lean Query Analyzer
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [insights, setInsights] = useState<any>(null);
 
   // State for saved queries and comparison
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
@@ -160,6 +165,9 @@ const TestQueryPage: React.FC = () => {
       const data: QueryMetrics = await response.json();
       setQueryMetrics(data);
 
+      // Analyze the query for enhanced insights
+      await handleAnalyzeQuery(query);
+
       // Refresh the saved queries list after successful fetch
       await fetchSavedQueries();
     } catch (err) {
@@ -201,6 +209,57 @@ const TestQueryPage: React.FC = () => {
     });
   };
 
+  // Function to analyze query for enhanced insights with tracing
+  const handleAnalyzeQuery = async (sqlQuery: string) => {
+    // Create a trace ID for this query analysis
+    const traceId = Math.random().toString(36).substring(2, 15);
+    
+    try {
+      console.log(`Starting query analysis trace: ${traceId}`);
+      
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:4002/api/query/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          // Add trace context headers
+          'X-Trace-Id': traceId,
+          'X-Query-Source': 'test-query-page',
+        },
+        body: JSON.stringify({ 
+          sqlQuery,
+          traceContext: {
+            traceId,
+            source: 'frontend.test-query-page',
+            timestamp: new Date().toISOString(),
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAnalysis(result.analysis);
+        setInsights(result.insights);
+        
+        // Log successful analysis with trace context
+        console.log(`Query analysis completed successfully`, {
+          traceId,
+          executionTime: result.analysis?.executionTime,
+          cacheHitRatio: result.analysis?.cacheHitRatio,
+          recommendations: result.insights?.recommendations?.length || 0,
+        });
+      } else {
+        console.error(`Query analysis failed with status: ${response.status}`, {
+          traceId,
+          status: response.status,
+        });
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error, { traceId });
+    }
+  };
+
   // Redirect to login if user is not authenticated
   const handleLogin = () => {
     navigate('/auth');
@@ -225,7 +284,12 @@ const TestQueryPage: React.FC = () => {
             <Alert
               severity='warning'
               action={
-                <Button color='inherit' size='small' onClick={handleLogin} sx={{textTransform: "none"}}>
+                <Button
+                  color='inherit'
+                  size='small'
+                  onClick={handleLogin}
+                  sx={{ textTransform: 'none' }}
+                >
                   Log In
                 </Button>
               }
@@ -274,6 +338,15 @@ const TestQueryPage: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Lean Query Analyzer */}
+              {analysis && insights && (
+                <LeanQueryAnalyzer
+                  analysis={analysis}
+                  insights={insights}
+                  mode='single'
+                />
+              )}
             </>
           )}
         </Container>
@@ -287,6 +360,29 @@ const TestQueryPage: React.FC = () => {
         onOpenCompare={() => {
           setShowQueryHistory(false);
           setShowComparisonDialog(true);
+        }}
+        onCompareWithCurrent={(historicalQuery) => {
+          setShowQueryHistory(false);
+          setFirstQuery(historicalQuery);
+          setSecondQuery({
+            id: 0,
+            queryName: 'Current Query',
+            queryText: query,
+            metrics: queryMetrics || {
+              executionTime: 0,
+              planningTime: 0,
+              rowsReturned: 0,
+              actualLoops: 0,
+              sharedHitBlocks: 0,
+              sharedReadBlocks: 0,
+              workMem: 0,
+              cacheHitRatio: 0,
+              startupCost: 0,
+              totalCost: 0,
+            },
+            createdAt: new Date().toISOString(),
+          });
+          setCompareMode(true);
         }}
       />
       <QueryComparisonForm
