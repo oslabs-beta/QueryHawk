@@ -1,6 +1,6 @@
 /**
  * Alloy PostgreSQL Exporter
- * 
+ *
  * Dynamically configures Grafana Alloy targets for PostgreSQL monitoring.
  * This solves the problem of having to restart monitoring services when
  * adding new databases.
@@ -48,10 +48,10 @@ export interface CleanupResult {
 
 /**
  * Parse PostgreSQL connection strings and URIs to get host and port
- * 
+ *
  * Handles:
  * - postgresql://user:pass@host:port/db
- * - postgres://user:pass@host:port/db  
+ * - postgres://user:pass@host:port/db
  * - host:port (plain format)
  */
 function parseConnectionString(uri_string: string): {
@@ -75,7 +75,7 @@ function parseConnectionString(uri_string: string): {
       const parts = uri_string.split(':');
       if (parts.length < 1 || parts.length > 2) {
         throw new Error(
-          'Invalid connection string format. Expected "host" or "host:port"'
+          'Invalid connection string format. Expected "host" or "host:port"',
         );
       }
 
@@ -127,8 +127,14 @@ async function ensureTargetDirectory(): Promise<void> {
     try {
       await fs.mkdir(TARGET_DIR, { recursive: true });
     } catch (error) {
+      if (error instanceof Error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === 'EEXIST' || error.message.includes('already exists')) {
+          return;
+        }
+      }
       throw new Error(
-        `Failed to create target directory ${TARGET_DIR}: ${error}`
+        `Failed to create target directory ${TARGET_DIR}: ${error}`,
       );
     }
   }
@@ -179,7 +185,7 @@ function extractUsername(uri_string: string): string {
 
 /**
  * Create a PostgreSQL monitoring target for Grafana Alloy
- * 
+ *
  * This:
  * 1. Validates the input
  * 2. Parses the connection string
@@ -208,7 +214,7 @@ export const setDatabaseUriToPostgresExporter = async ({
     if (!(await isDirectoryWritable(TARGET_DIR))) {
       throw new Error(
         `Directory ${TARGET_DIR} is not writable by the backend service. ` +
-          `Please check permissions and ensure the service has write access.`
+          `Please check permissions and ensure the service has write access.`,
       );
     }
 
@@ -258,23 +264,23 @@ export const setDatabaseUriToPostgresExporter = async ({
     // Give useful error messages
     if (error instanceof Error) {
       throw new Error(
-        `Failed to create PostgreSQL monitoring target: ${error.message}`
+        `Failed to create PostgreSQL monitoring target: ${error.message}`,
       );
     }
     throw new Error(
-      'Failed to create PostgreSQL monitoring target: Unknown error occurred'
+      'Failed to create PostgreSQL monitoring target: Unknown error occurred',
     );
   }
 };
 
 /**
  * Remove a PostgreSQL monitoring target
- * 
+ *
  * This deletes the target file, which causes Alloy to stop monitoring
  * the database automatically.
  */
 export const cleanupExporter = async (
-  userId: string
+  userId: string,
 ): Promise<CleanupResult> => {
   try {
     if (!userId || userId.trim() === '') {
@@ -288,7 +294,7 @@ export const cleanupExporter = async (
       await fs.access(targetFile);
     } catch {
       console.log(
-        `ℹ️ Target file for user ${userId} not found, nothing to clean up`
+        `ℹ️ Target file for user ${userId} not found, nothing to clean up`,
       );
       return {
         success: true,
@@ -314,7 +320,7 @@ export const cleanupExporter = async (
       throw new Error(`Failed to cleanup monitoring target: ${error.message}`);
     }
     throw new Error(
-      'Failed to cleanup monitoring target: Unknown error occurred'
+      'Failed to cleanup monitoring target: Unknown error occurred',
     );
   }
 };
@@ -339,7 +345,7 @@ export const listActiveTargets = async (): Promise<AlloyTarget[]> => {
         } catch (fileError) {
           console.warn(
             `⚠️ Warning: Could not parse target file ${file}:`,
-            fileError
+            fileError,
           );
           // Keep going with other files
         }
@@ -361,7 +367,7 @@ export const listActiveTargets = async (): Promise<AlloyTarget[]> => {
  * Get info about a specific monitoring target
  */
 export const getTargetInfo = async (
-  userId: string
+  userId: string,
 ): Promise<AlloyTarget | null> => {
   try {
     if (!userId || userId.trim() === '') {

@@ -1,6 +1,6 @@
 /**
  * Tests for Alloy PostgreSQL Exporter
- * 
+ *
  * Covers the main functionality and edge cases I've run into.
  */
 
@@ -85,7 +85,9 @@ describe('Alloy PostgreSQL Exporter', () => {
       mockedFs.mkdir.mockResolvedValue(undefined);
       mockedFs.writeFile.mockResolvedValue(undefined);
 
-      const result = await setDatabaseUriToPostgresExporter(connectionStringConfig);
+      const result = await setDatabaseUriToPostgresExporter(
+        connectionStringConfig,
+      );
 
       expect(result.success).toBe(true);
       expect(result.target.targets).toEqual([`${mockHost}:${mockPort}`]);
@@ -131,7 +133,9 @@ describe('Alloy PostgreSQL Exporter', () => {
 
       await setDatabaseUriToPostgresExporter(validConfig);
 
-      expect(mockedFs.mkdir).toHaveBeenCalledWith('./grafana-alloy/targets', { recursive: true });
+      expect(mockedFs.mkdir).toHaveBeenCalledWith('./grafana-alloy/targets', {
+        recursive: true,
+      });
     });
 
     it('validates userId is not empty', async () => {
@@ -140,9 +144,9 @@ describe('Alloy PostgreSQL Exporter', () => {
         uri_string: validConfig.uri_string,
       };
 
-      await expect(setDatabaseUriToPostgresExporter(invalidConfig))
-        .rejects
-        .toThrow('userId is required and cannot be empty');
+      await expect(
+        setDatabaseUriToPostgresExporter(invalidConfig),
+      ).rejects.toThrow('userId is required and cannot be empty');
     });
 
     it('validates uri_string is not empty', async () => {
@@ -151,9 +155,9 @@ describe('Alloy PostgreSQL Exporter', () => {
         uri_string: '',
       };
 
-      await expect(setDatabaseUriToPostgresExporter(invalidConfig))
-        .rejects
-        .toThrow('uri_string is required and cannot be empty');
+      await expect(
+        setDatabaseUriToPostgresExporter(invalidConfig),
+      ).rejects.toThrow('uri_string is required and cannot be empty');
     });
 
     it('handles invalid connection string format', async () => {
@@ -162,9 +166,9 @@ describe('Alloy PostgreSQL Exporter', () => {
         uri_string: 'invalid:format:here',
       };
 
-      await expect(setDatabaseUriToPostgresExporter(invalidConfig))
-        .rejects
-        .toThrow('Invalid connection string format');
+      await expect(
+        setDatabaseUriToPostgresExporter(invalidConfig),
+      ).rejects.toThrow('Invalid connection string format');
     });
 
     it('handles invalid port numbers', async () => {
@@ -173,9 +177,9 @@ describe('Alloy PostgreSQL Exporter', () => {
         uri_string: 'host:99999',
       };
 
-      await expect(setDatabaseUriToPostgresExporter(invalidConfig))
-        .rejects
-        .toThrow('Invalid port number');
+      await expect(
+        setDatabaseUriToPostgresExporter(invalidConfig),
+      ).rejects.toThrow('Invalid port number');
     });
 
     it('handles empty host', async () => {
@@ -184,28 +188,28 @@ describe('Alloy PostgreSQL Exporter', () => {
         uri_string: ':5432',
       };
 
-      await expect(setDatabaseUriToPostgresExporter(invalidConfig))
-        .rejects
-        .toThrow('Host cannot be empty');
+      await expect(
+        setDatabaseUriToPostgresExporter(invalidConfig),
+      ).rejects.toThrow('Host cannot be empty');
     });
 
     it('handles directory not writable error', async () => {
       mockedFs.access.mockResolvedValue(undefined);
       mockedFs.mkdir.mockResolvedValue(undefined);
-      
+
       // Mock writeFile to fail
       mockedFs.writeFile.mockImplementation(() => {
         throw new Error('Permission denied');
       });
 
-      await expect(setDatabaseUriToPostgresExporter(validConfig))
-        .rejects
-        .toThrow('Failed to create PostgreSQL monitoring target');
+      await expect(
+        setDatabaseUriToPostgresExporter(validConfig),
+      ).rejects.toThrow('Failed to create PostgreSQL monitoring target');
     });
 
     it('sets environment from NODE_ENV', async () => {
       process.env.NODE_ENV = 'production';
-      
+
       mockedFs.access.mockResolvedValue(undefined);
       mockedFs.mkdir.mockResolvedValue(undefined);
       mockedFs.writeFile.mockResolvedValue(undefined);
@@ -250,18 +254,18 @@ describe('Alloy PostgreSQL Exporter', () => {
     });
 
     it('validates userId is not empty', async () => {
-      await expect(cleanupExporter(''))
-        .rejects
-        .toThrow('userId is required and cannot be empty');
+      await expect(cleanupExporter('')).rejects.toThrow(
+        'userId is required and cannot be empty',
+      );
     });
 
     it('handles file system errors during cleanup', async () => {
       mockedFs.access.mockResolvedValue(undefined);
       mockedFs.unlink.mockRejectedValue(new Error('Permission denied'));
 
-      await expect(cleanupExporter(mockUserId))
-        .rejects
-        .toThrow('Failed to cleanup monitoring target');
+      await expect(cleanupExporter(mockUserId)).rejects.toThrow(
+        'Failed to cleanup monitoring target',
+      );
     });
   });
 
@@ -283,7 +287,10 @@ describe('Alloy PostgreSQL Exporter', () => {
 
     it('lists all active monitoring targets', async () => {
       mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readdir.mockResolvedValue(['user-123.json', 'user-456.json'] as any);
+      mockedFs.readdir.mockResolvedValue([
+        'user-123.json',
+        'user-456.json',
+      ] as any);
       mockedFs.readFile
         .mockResolvedValueOnce(JSON.stringify(mockTargets))
         .mockResolvedValueOnce(JSON.stringify(mockTargets));
@@ -306,7 +313,11 @@ describe('Alloy PostgreSQL Exporter', () => {
 
     it('skips non-JSON files', async () => {
       mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readdir.mockResolvedValue(['user-123.json', 'config.txt', 'user-456.json'] as any);
+      mockedFs.readdir.mockResolvedValue([
+        'user-123.json',
+        'config.txt',
+        'user-456.json',
+      ] as any);
       mockedFs.readFile
         .mockResolvedValueOnce(JSON.stringify(mockTargets))
         .mockResolvedValueOnce(JSON.stringify(mockTargets));
@@ -319,7 +330,10 @@ describe('Alloy PostgreSQL Exporter', () => {
 
     it('handles malformed JSON files gracefully', async () => {
       mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readdir.mockResolvedValue(['user-123.json', 'user-456.json'] as any);
+      mockedFs.readdir.mockResolvedValue([
+        'user-123.json',
+        'user-456.json',
+      ] as any);
       mockedFs.readFile
         .mockResolvedValueOnce(JSON.stringify(mockTargets))
         .mockResolvedValueOnce('invalid json content');
@@ -337,7 +351,9 @@ describe('Alloy PostgreSQL Exporter', () => {
 
       await listActiveTargets();
 
-      expect(mockedFs.mkdir).toHaveBeenCalledWith('./grafana-alloy/targets', { recursive: true });
+      expect(mockedFs.mkdir).toHaveBeenCalledWith('./grafana-alloy/targets', {
+        recursive: true,
+      });
     });
   });
 
@@ -373,27 +389,27 @@ describe('Alloy PostgreSQL Exporter', () => {
     });
 
     it('validates userId is not empty', async () => {
-      await expect(getTargetInfo(''))
-        .rejects
-        .toThrow('userId is required and cannot be empty');
+      await expect(getTargetInfo('')).rejects.toThrow(
+        'userId is required and cannot be empty',
+      );
     });
 
     it('handles file read errors', async () => {
       mockedFs.access.mockResolvedValue(undefined);
       mockedFs.readFile.mockRejectedValue(new Error('Permission denied'));
 
-      await expect(getTargetInfo(mockUserId))
-        .rejects
-        .toThrow('Failed to get target info');
+      await expect(getTargetInfo(mockUserId)).rejects.toThrow(
+        'Failed to get target info',
+      );
     });
 
     it('handles malformed JSON content', async () => {
       mockedFs.access.mockResolvedValue(undefined);
       mockedFs.readFile.mockResolvedValue('invalid json');
 
-      await expect(getTargetInfo(mockUserId))
-        .rejects
-        .toThrow('Failed to get target info');
+      await expect(getTargetInfo(mockUserId)).rejects.toThrow(
+        'Failed to get target info',
+      );
     });
   });
 
@@ -401,17 +417,22 @@ describe('Alloy PostgreSQL Exporter', () => {
     it('handles network errors gracefully', async () => {
       const networkError = new Error('Network timeout');
       mockedFs.access.mockRejectedValue(networkError);
+      mockedFs.mkdir.mockRejectedValue(networkError);
 
-      await expect(setDatabaseUriToPostgresExporter({
-        userId: mockUserId,
-        uri_string: `postgresql://${mockUsername}:password@${mockHost}:${mockPort}/${mockDatabase}`,
-      })).rejects.toThrow('Failed to create PostgreSQL monitoring target');
+      await expect(
+        setDatabaseUriToPostgresExporter({
+          userId: mockUserId,
+          uri_string: `postgresql://${mockUsername}:password@${mockHost}:${mockPort}/${mockDatabase}`,
+        }),
+      ).rejects.toThrow('Failed to create PostgreSQL monitoring target');
     });
 
     it('handles concurrent access scenarios', async () => {
       // Simulate directory being created by another process
       mockedFs.access.mockRejectedValueOnce(new Error('Directory not found'));
-      mockedFs.mkdir.mockRejectedValueOnce(new Error('Directory already exists'));
+      mockedFs.mkdir.mockRejectedValueOnce(
+        new Error('Directory already exists'),
+      );
       mockedFs.access.mockResolvedValueOnce(undefined);
       mockedFs.writeFile.mockResolvedValue(undefined);
 

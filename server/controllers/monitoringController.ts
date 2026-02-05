@@ -2,6 +2,16 @@ import { Request, Response } from 'express';
 import pg from 'pg';
 import { register, Gauge, Counter } from 'prom-client';
 
+// Consistent HTTP error responses for this controller
+const sendErrorResponse = (
+  res: Response,
+  status: number,
+  message: string,
+  details?: string,
+): void => {
+  res.status(status).json({ error: message, message, details });
+};
+
 // Prometheus metrics
 const dbConnectionGauge = new Gauge({
   name: 'pg_stat_database_numbackends',
@@ -69,7 +79,7 @@ const dbCacheHitRatio = new Gauge({
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-// User connection pools management
+// User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
 let appDbPool: pg.Pool | null = null;
 let multiUserCollectionInterval: NodeJS.Timeout | null = null;
@@ -90,7 +100,7 @@ const initializeAppDbPool = () => {
 const collectUserDatabaseMetrics = async (
   pool: pg.Pool,
   userId: string,
-  uriString: string
+  uriString: string,
 ) => {
   try {
     // Extract hostname and port from URI for instance label
@@ -99,7 +109,7 @@ const collectUserDatabaseMetrics = async (
 
     // Get database name
     const dbNameResult = await pool.query(
-      'SELECT current_database() as datname'
+      'SELECT current_database() as datname',
     );
     const datname = dbNameResult.rows[0]?.datname || 'unknown';
 
@@ -120,7 +130,7 @@ const collectUserDatabaseMetrics = async (
       FROM pg_stat_database 
       WHERE datname = $1
     `,
-      [datname]
+      [datname],
     );
 
     if (statsResult.rows.length > 0) {
@@ -129,37 +139,37 @@ const collectUserDatabaseMetrics = async (
       // Set metrics with user-specific labels
       dbConnectionGauge.set(
         { datname, user_id: userId, instance },
-        stats.numbackends
+        stats.numbackends,
       );
       dbConnectionCounter.inc(
         { datname, user_id: userId, instance },
-        stats.xact_commit
+        stats.xact_commit,
       );
       dbTransactionRollback.inc(
         { datname, user_id: userId, instance },
-        stats.xact_rollback
+        stats.xact_rollback,
       );
       dbBlocksHit.inc({ datname, user_id: userId, instance }, stats.blks_hit);
       dbBlocksRead.inc({ datname, user_id: userId, instance }, stats.blks_read);
       dbTupReturned.inc(
         { datname, user_id: userId, instance },
-        stats.tup_returned
+        stats.tup_returned,
       );
       dbTupFetched.inc(
         { datname, user_id: userId, instance },
-        stats.tup_fetched
+        stats.tup_fetched,
       );
       dbTupInserted.inc(
         { datname, user_id: userId, instance },
-        stats.tup_inserted
+        stats.tup_inserted,
       );
       dbTupUpdated.inc(
         { datname, user_id: userId, instance },
-        stats.tup_updated
+        stats.tup_updated,
       );
       dbTupDeleted.inc(
         { datname, user_id: userId, instance },
-        stats.tup_deleted
+        stats.tup_deleted,
       );
 
       // Calculate cache hit ratio
@@ -168,7 +178,7 @@ const collectUserDatabaseMetrics = async (
         totalBlocks > 0 ? (stats.blks_hit / totalBlocks) * 100 : 0;
       dbCacheHitRatio.set(
         { datname, user_id: userId, instance },
-        cacheHitRatio
+        cacheHitRatio,
       );
     }
 
@@ -241,7 +251,7 @@ const collectAllUserMetrics = async () => {
   }
 };
 
-// Start multi-user metrics collection
+// Start multi-user metrics collection on a fixed interval
 const startMultiUserMetricsCollection = () => {
   if (multiUserCollectionInterval) {
     return; // Already running
@@ -291,9 +301,7 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
     const { userId, databaseUrl } = req.body;
 
     if (!userId || !databaseUrl) {
-      res.status(400).json({
-        error: 'userId and databaseUrl are required',
-      });
+      sendErrorResponse(res, 400, 'userId and databaseUrl are required');
       return;
     }
 
@@ -301,9 +309,11 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
     initializeAppDbPool();
 
     if (!appDbPool) {
-      res.status(500).json({
-        error: 'Failed to initialize app database connection',
-      });
+      sendErrorResponse(
+        res,
+        500,
+        'Failed to initialize app database connection',
+      );
       return;
     }
 
@@ -332,7 +342,7 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
           is_active = true, 
           updated_at = NOW()
       `,
-        [userId, databaseUrl]
+        [userId, databaseUrl],
       );
 
       // Start multi-user collection if not already running
@@ -349,7 +359,7 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
       await collectUserDatabaseMetrics(
         userPool,
         userId.toString(),
-        databaseUrl
+        databaseUrl,
       );
 
       res.json({
@@ -372,21 +382,25 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
           is_active = false, 
           updated_at = NOW()
       `,
-        [userId, databaseUrl]
+        [userId, databaseUrl],
       );
 
       console.error('Database connection test failed:', error);
-      res.status(500).json({
-        error: 'Failed to connect to database',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
+      sendErrorResponse(
+        res,
+        500,
+        'Failed to connect to database',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
     }
   } catch (error) {
     console.error('Error in setupMonitoring:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
+    sendErrorResponse(
+      res,
+      500,
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
   }
 };
 
@@ -400,7 +414,12 @@ const getMetrics = async (req: Request, res: Response) => {
     res.end(await register.metrics());
   } catch (error) {
     console.error('Error getting metrics:', error);
-    res.status(500).json({ error: 'Failed to get metrics' });
+    sendErrorResponse(
+      res,
+      500,
+      'Failed to get metrics',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
   }
 };
 
