@@ -1,7 +1,7 @@
 // Import core OpenTelemetry packages
 import { NodeSDK } from '@opentelemetry/sdk-node'; // Main SDK for Node.js applications
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'; // Automatic instrumentation for Node.js libraries
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'; // Exports traces to your collector (Jaeger in our case)
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'; // Exports traces to a collector (Grafana Alloy)
 import { Resource } from '@opentelemetry/resources'; // Adds context/metadata to your traces
 import {
   ATTR_SERVICE_NAME,
@@ -9,63 +9,66 @@ import {
 } from '@opentelemetry/semantic-conventions'; // Standard naming for resource attributes
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'; // Processes and exports spans as they are ended
 
+const serviceName = process.env.OTEL_SERVICE_NAME || 'queryhawk-backend';
+const serviceVersion = process.env.OTEL_SERVICE_VERSION || '1.0.0';
+const otlpEndpoint =
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+  'http://grafana-alloy:14318/v1/traces';
+
 // Initialize the OpenTelemetry SDK
 const sdk = new NodeSDK({
   // Resource: Identifies your application in the traces
   resource: new Resource({
     // SERVICE_NAME: How your app will appear in Jaeger UI
-    [ATTR_SERVICE_NAME]: 'sql-optimizer',
+    [ATTR_SERVICE_NAME]: serviceName,
     // SERVICE_VERSION: Helps track which version generated the traces
-    [ATTR_SERVICE_VERSION]: '1.0.0',
+    [ATTR_SERVICE_VERSION]: serviceVersion,
     // Custom attribute to distinguish development from production
-    environment: 'development',
-  }),
-
-  // Trace Exporter: Configures where to send the traces
-  // In this case, sending to big Docker file, specifically to otel-collector service which represents opentelemetry
-  traceExporter: new OTLPTraceExporter({
-    url: 'http://otel-collector:4318/v1/traces', // Points to Docker service
+    environment: process.env.NODE_ENV || 'development',
   }),
 
   // Span Processor: Handles each span (trace segment) as it's completed
   // SimpleSpanProcessor: Exports spans immediately (good for development)
   // For production, consider BatchSpanProcessor instead
-  spanProcessor: new SimpleSpanProcessor(new OTLPTraceExporter()),
+  spanProcessor: new SimpleSpanProcessor(
+    new OTLPTraceExporter({
+      url: otlpEndpoint,
+    }),
+  ),
 
   // Auto-instrumentations: Automatically traces common Node.js libraries
   instrumentations: [
     getNodeAutoInstrumentations({
-      // Enable Express instrumentation to track:
-      // - Route handling
-      // - Middleware execution
-      // - Response time
+      // Express spans capture route + middleware latency for request lifecycles.
       '@opentelemetry/instrumentation-express': {
         enabled: true,
       },
-      // Enable HTTP instrumentation to track:
-      // - Incoming requests
-      // - Outgoing requests
-      // - Response status
+      // HTTP spans capture inbound/outbound calls and propagate context.
       '@opentelemetry/instrumentation-http': {
+        enabled: true,
+      },
+      // PostgreSQL spans capture query timing for DB performance analysis.
+      '@opentelemetry/instrumentation-pg': {
         enabled: true,
       },
     }),
   ],
 });
 
-// Start the SDK and log status
+// Start the SDK
 sdk.start();
-console.log('Tracing initialized');
 
 // shutdown handler
 // ensures all pending traces are exported before app exits
-process.on('SIGTERM', () => {
+const shutdownTracing = () => {
   sdk
     .shutdown()
-    .then(() => console.log('Tracing terminated'))
-    .catch((error) => console.log('Error terminating tracing', error))
+    .catch(() => undefined)
     .finally(() => process.exit(0));
-});
+};
+
+process.on('SIGTERM', shutdownTracing);
+process.on('SIGINT', shutdownTracing);
 export default sdk;
 
 //OpenTelemetry collects 3 types of monitoring data:

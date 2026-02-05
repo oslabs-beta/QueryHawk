@@ -47,7 +47,7 @@ class OAuthController {
           client_secret: githubClientSecret,
           code: code,
         }),
-      }
+      },
     );
 
     const tokenData = (await tokenResponse.json()) as GithubTokenResponse;
@@ -61,7 +61,7 @@ class OAuthController {
     if (tokenData.error) {
       throw this.createError(
         tokenData.error_description || 'Failed to exchange code for token',
-        401
+        401,
       );
     }
 
@@ -97,7 +97,7 @@ class OAuthController {
         email: user.email,
       },
       process.env.JWT_SECRET || '',
-      { expiresIn: '24h' }
+      { expiresIn: '24h' },
     );
   }
 
@@ -157,6 +157,7 @@ class OAuthController {
       const statusCode = (error as CustomError).statusCode || 500;
       res.status(statusCode).json({
         error: (error as Error).message || 'Authentication failed',
+        message: (error as Error).message || 'Authentication failed',
       });
     }
   }

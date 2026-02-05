@@ -1,0 +1,12 @@
+[
+  {
+    "targets": ["localhost:5432"],
+    "labels": {
+      "user_id": "sample",
+      "database": "postgresql",
+      "service": "queryhawk",
+      "environment": "development",
+      "description": "Sample database for testing"
+    }
+  }
+]

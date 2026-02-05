@@ -1,0 +1,16 @@
+[
+  {
+    "targets": [
+      "aws-0-us-east-1.pooler.supabase.com:5432"
+    ],
+    "labels": {
+      "user_id": "17",
+      "database": "postgresql",
+      "service": "queryhawk",
+      "environment": "development",
+      "instance": "aws-0-us-east-1.pooler.supabase.com:5432",
+      "database_name": "postgres",
+      "user": "postgres.zfbgkhgpvwqjicxwhhoc"
+    }
+  }
+]
