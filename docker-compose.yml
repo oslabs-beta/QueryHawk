@@ -1,9 +1,6 @@
-# Docker Compose configuration for QueryHawk with Grafana Alloy
+version: '3.8'
 
-#ALL VOLUMES AND COMMANDS AND BUILDS WILL NEED TO BE UPDATED WITH ACCURATE
-#LOCATIONS. AND WILL ALSO NEED TO CREATE DOCKER FILES WHERE NEEDED
-#FOR EXAMPLE WE'LL NEED A DOCKER FILE IN THE SERVER FOLDER FOR THE BACKEND SERVICE
-#and will need to add opentelemetry
+# Docker Compose configuration for QueryHawk with Grafana Alloy
 
 services: # This section defines all the services (containers) we want to run
   # Supabase - Our main database and auth service
@@ -65,11 +62,17 @@ services: # This section defines all the services (containers) we want to run
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URI=${SUPABASE_URI}
       - NODE_ENV=development
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:14318 # OTLP endpoint for Grafana Alloy
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:14318/v1/traces # OTLP HTTP endpoint for Grafana Alloy
+      - OTEL_SERVICE_NAME=queryhawk-backend
+      - OTEL_SERVICE_VERSION=1.0.0
     depends_on:
       - jaeger
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
@@ -86,6 +89,10 @@ services: # This section defines all the services (containers) we want to run
       - COLLECTOR_OTLP_ENABLED=true
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # Loki - Log aggregation and querying
   loki:
@@ -98,6 +105,10 @@ services: # This section defines all the services (containers) we want to run
       - loki_data:/loki
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # Mimir - Long-term metrics storage and Prometheus-compatible API
   mimir:
@@ -113,6 +124,10 @@ services: # This section defines all the services (containers) we want to run
       - MIMIR_CONFIG=/etc/mimir/mimir.yaml
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   # Grafana Alloy - Metrics collection and processing
   grafana-alloy:
@@ -134,6 +149,10 @@ services: # This section defines all the services (containers) we want to run
       - grafana
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   # Prometheus service removed - Alloy handles metrics collection and sends to Grafana
 
@@ -161,6 +180,10 @@ services: # This section defines all the services (containers) we want to run
       - backend # Needs backend to start first
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   # React Frontend - Our user interface
   frontend:
@@ -185,7 +208,12 @@ services: # This section defines all the services (containers) we want to run
       - grafana # Ensures Grafana is available first
     networks:
       - queryhawk_monitoring_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
+# All services share a single bridge network for discovery (e.g., grafana-alloy, loki, mimir).
 networks:
   queryhawk_monitoring_network:
     name: queryhawk_monitoring_network

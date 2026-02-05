@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import pg from 'pg';
 import { register, Gauge, Counter } from 'prom-client';
+import { pool as appDbPool, closePool } from '../db/db';
 
 // Consistent HTTP error responses for this controller
 const sendErrorResponse = (
@@ -81,20 +82,7 @@ const dbCacheHitRatio = new Gauge({
 
 // User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
-let appDbPool: pg.Pool | null = null;
 let multiUserCollectionInterval: NodeJS.Timeout | null = null;
-
-// Initialize QueryHawk's internal database pool
-const initializeAppDbPool = () => {
-  if (!appDbPool) {
-    appDbPool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    });
-  }
-};
 
 // Collect metrics from a specific user's database
 const collectUserDatabaseMetrics = async (
@@ -206,11 +194,6 @@ const setUserMetricsToError = (userId: string, uriString: string) => {
 
 // Collect metrics from all user databases
 const collectAllUserMetrics = async () => {
-  if (!appDbPool) {
-    console.log('App database pool not initialized');
-    return;
-  }
-
   try {
     // Get all active user connections
     const result = await appDbPool.query(`
@@ -278,14 +261,11 @@ const cleanup = async () => {
   userConnectionPools.clear();
 
   // Close app database pool
-  if (appDbPool) {
-    try {
-      await appDbPool.end();
-      console.log('Closed app database pool');
-    } catch (error) {
-      console.error('Error closing app database pool:', error);
-    }
-    appDbPool = null;
+  try {
+    await closePool();
+    console.log('Closed app database pool');
+  } catch (error) {
+    console.error('Error closing app database pool:', error);
   }
 
   // Clear interval
@@ -302,18 +282,6 @@ const setupMonitoring = async (req: Request, res: Response): Promise<void> => {
 
     if (!userId || !databaseUrl) {
       sendErrorResponse(res, 400, 'userId and databaseUrl are required');
-      return;
-    }
-
-    // Initialize app database pool if not already done
-    initializeAppDbPool();
-
-    if (!appDbPool) {
-      sendErrorResponse(
-        res,
-        500,
-        'Failed to initialize app database connection',
-      );
       return;
     }
 
@@ -425,7 +393,6 @@ const getMetrics = async (req: Request, res: Response) => {
 
 // Initialize function
 const initialize = () => {
-  initializeAppDbPool();
   startMultiUserMetricsCollection();
 };
 

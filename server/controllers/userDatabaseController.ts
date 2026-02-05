@@ -5,11 +5,7 @@ import {
   compareQueries,
   ServiceError,
 } from '../services/queryAnalysisService';
-
-// Creating a pool for our app database to save metrics.
-const appDbPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+import { pool as appDbPool } from '../db/db';
 
 // Consistent HTTP error responses for this controller
 const sendErrorResponse = (

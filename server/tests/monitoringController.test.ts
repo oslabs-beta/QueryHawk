@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 const poolInstances: Array<{
   query: ReturnType<typeof vi.fn>;
   end: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
 }> = [];
 type PoolBehavior =
   | { type: 'resolve'; value?: { rows?: unknown[] } | unknown }
@@ -15,6 +16,7 @@ vi.mock('pg', () => {
   class Pool {
     query = vi.fn();
     end = vi.fn();
+    on = vi.fn();
 
     constructor() {
       const behavior = poolBehaviorQueue.shift();

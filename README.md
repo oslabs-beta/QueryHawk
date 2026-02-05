@@ -78,6 +78,12 @@ QueryHawk includes distributed tracing capabilities:
 - Identify performance bottlenecks
 - Debug slow queries
 
+### Tracing configuration notes
+
+- Traces are exported via OTLP HTTP to Grafana Alloy to keep a single, consistent collection path.
+- The backend uses a SimpleSpanProcessor in development to make traces visible immediately; swap to a BatchSpanProcessor for production.
+- Sampling is left as default (always on) for local debugging, but can be tuned via OpenTelemetry env vars as traffic grows.
+
 ## 🛠️ Enterprise-Ready Architecture
 
 - Docker-based Deployment: Quickly deploy the entire monitoring stack with Docker Compose.
