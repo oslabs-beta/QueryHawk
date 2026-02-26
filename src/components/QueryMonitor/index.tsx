@@ -99,6 +99,7 @@ const QueryMonitor: React.FC = () => {
         },
         body: JSON.stringify({
           databaseUrl: dbUrl,
+          userId: userId,
         }),
       });
 
@@ -107,31 +108,8 @@ const QueryMonitor: React.FC = () => {
         throw new Error(data.message || 'Failed to connect to database');
       }
 
-      await response.json();
-
-      const monitoringResponse = await fetch(
-        'http://localhost:4002/api/connect',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            databaseUrl: dbUrl,
-            userId: userId,
-          }),
-        }
-      );
-      if (!monitoringResponse.ok) {
-        // If monitoring setup fails, we still have internal monitoring, so just log a warning
-        console.warn(
-          'Monitoring setup failed, but database connection is still active'
-        );
-      } else {
-        const monitoringData = await monitoringResponse.json();
-        console.log('Monitoring setup successful:', monitoringData);
-      }
+      const data = await response.json();
+      console.log('Connection sucessful: ', data);
 
       // Add a small delay to allow metrics to be collected
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -140,7 +118,7 @@ const QueryMonitor: React.FC = () => {
       setSuccessMessage('Connected successfully! Monitoring started.');
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'An unknown error occurred'
+        err instanceof Error ? err.message : 'An unknown error occurred',
       );
     } finally {
       setIsConnecting(false);
@@ -170,12 +148,12 @@ const QueryMonitor: React.FC = () => {
               Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({}), // No need to send userId, it comes from the auth token
-          }
+          },
         );
 
         if (!exporterResponse.ok) {
           console.warn(
-            'Failed to stop exporter, but continuing with disconnect'
+            'Failed to stop exporter, but continuing with disconnect',
           );
         }
       }
@@ -187,7 +165,7 @@ const QueryMonitor: React.FC = () => {
       setSuccessMessage('Database disconnected and monitoring stopped.');
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'An unknown error occurred'
+        err instanceof Error ? err.message : 'An unknown error occurred',
       );
     }
   };
