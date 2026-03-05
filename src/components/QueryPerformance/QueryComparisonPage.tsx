@@ -16,12 +16,14 @@ interface QueryComparisonViewProps {
   firstQuery: SavedQuery | null;
   secondQuery: SavedQuery | null;
   onExitCompare: () => void;
+  onOpenCompare: () => void;
 }
 
 const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
   firstQuery,
   secondQuery,
   onExitCompare,
+  onOpenCompare,
 }) => {
   if (!firstQuery || !secondQuery) return null;
 
@@ -39,15 +41,19 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           Query Comparison
         </Typography>
         <Button
-          // onClick={onOpenCompare}
+          onClick={onOpenCompare}
           variant='contained'
           startIcon={<CompareArrowsIcon />}
         >
           Compare Queries
         </Button>
-        <Button variant='outlined' onClick={onExitCompare} sx={{
-                  textTransform: "none"
-                }}>
+        <Button
+          variant='outlined'
+          onClick={onExitCompare}
+          sx={{
+            textTransform: 'none',
+          }}
+        >
           Exit Comparison
         </Button>
       </Box>
@@ -102,7 +108,7 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                     ((firstQuery.metrics.executionTime -
                       secondQuery.metrics.executionTime) /
                       firstQuery.metrics.executionTime) *
-                      100
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.executionTime >
@@ -123,7 +129,7 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                     ((firstQuery.metrics.planningTime -
                       secondQuery.metrics.planningTime) /
                       firstQuery.metrics.planningTime) *
-                      100
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.planningTime >
@@ -144,7 +150,7 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                     ((firstQuery.metrics.totalCost -
                       secondQuery.metrics.totalCost) /
                       firstQuery.metrics.totalCost) *
-                      100
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost

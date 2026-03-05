@@ -215,7 +215,6 @@ const TestQueryPage: React.FC = () => {
           isAuthenticated={isAuthenticated}
           onHistoryClick={() => {
             setShowQueryHistory(true);
-            setCompareMode(false);
           }}
         />
 
@@ -225,7 +224,12 @@ const TestQueryPage: React.FC = () => {
             <Alert
               severity='warning'
               action={
-                <Button color='inherit' size='small' onClick={handleLogin} sx={{textTransform: "none"}}>
+                <Button
+                  color='inherit'
+                  size='small'
+                  onClick={handleLogin}
+                  sx={{ textTransform: 'none' }}
+                >
                   Log In
                 </Button>
               }
@@ -237,6 +241,11 @@ const TestQueryPage: React.FC = () => {
             <QueryComparisonPage
               firstQuery={firstQuery}
               secondQuery={secondQuery}
+              // Allowing reopening the comparison dialog from within the comparison view.
+              onOpenCompare={() => {
+                setShowQueryHistory(false);
+                setShowComparisonDialog(true);
+              }}
               onExitCompare={() => {
                 // When we exit out setCompareMode becomes false and the page goes back to normal view.
                 setCompareMode(false);
