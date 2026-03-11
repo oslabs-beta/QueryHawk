@@ -80,9 +80,27 @@ const dbCacheHitRatio = new Gauge({
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
+// Creating new metric definition for slow query mean exec time
+const dbSlowQueryMeanExecTime = new Gauge({
+  name: 'pg_query_mean_exec_time',
+  help: 'Mean execution time of slow queries in milliseconds',
+  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+});
+
+// Creating new metric defintion for slow query total number of calls.
+const dbSlowQueryCalls = new Counter({
+  name: 'pg_query_calls',
+  help: 'Total number of times a query has been called',
+  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+});
+
 // User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
 let multiUserCollectionInterval: NodeJS.Timeout | null = null;
+
+// Stores last known cumulative call count per queryid id so we can
+// calculate the delta (new calls only) between collection cycles
+const previousCallCounts: Map<string, number> = new Map();
 
 // Collect metrics from a specific user's database
 const collectUserDatabaseMetrics = async (
@@ -165,6 +183,60 @@ const collectUserDatabaseMetrics = async (
         { datname, user_id: userId, instance },
         Number(stats.tup_deleted),
       );
+
+      // New connection for top 10 slow queries on user database
+      const slowQueryResults = await pool.query(
+        `
+          SELECT 
+            query,
+            queryid,
+            calls,
+            mean_exec_time
+          FROM pg_stat_statements
+          WHERE dbid = (SELECT oid FROM pg_database WHERE datname = $1)
+          ORDER BY mean_exec_time
+          DESC LIMIT 10
+        `,
+        [datname],
+      );
+
+      // We need to iterate through the results from our query
+      for (const row of slowQueryResults.rows) {
+        // need to create a label for each row that we iterate through
+        const labels = {
+          query: row.query,
+          queryid: row.queryid,
+          datname,
+          user_id: userId,
+          instance,
+        };
+
+        // Need to create key in order for the users query to not interfer with another users same queryid
+        const queryKey = `${row.queryid}-${datname}-${userId}`;
+
+        // Gets the value of the prev call count by using the queryid to access the count.
+        // If its the first time ever seen this query it will be 0.
+        const prevCalls = previousCallCounts.get(queryKey) ?? 0;
+
+        // Calulates how many NEW calls just happened
+        // 105 (current) - 100 (previous) = 5 new calls
+        const delta = Number(row.calls) - prevCalls;
+
+        // Need to update previousCallCounts map with the current value
+        // In order for the next cycle to calculate the delta correctly
+        previousCallCounts.set(queryKey, Number(row.calls));
+
+        // Debugging
+        // console.log(
+        //   `queryid: ${row.queryid} | prev: ${prevCalls} | current: ${row.calls} | delta: ${delta}`,
+        // );
+
+        // Need to increase Counter by the delta
+        dbSlowQueryCalls.inc(labels, delta);
+
+        // Need to set our mean exec since it is a gauge
+        dbSlowQueryMeanExecTime.set(labels, row.mean_exec_time);
+      }
 
       // Calculate cache hit ratio
       const totalBlocks = Number(stats.blks_hit) + Number(stats.blks_read);
