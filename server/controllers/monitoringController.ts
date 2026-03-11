@@ -20,56 +20,57 @@ const dbConnectionGauge = new Gauge({
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbConnectionCounter = new Counter({
-  name: 'pg_stat_database_xact_commit_total',
+// Changed from Counter to Gauge since pg_stat_database values are absolute, not deltas
+const dbConnectionCounter = new Gauge({
+  name: 'pg_stat_database_xact_commit',
   help: 'Total number of transactions committed',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTransactionRollback = new Counter({
-  name: 'pg_stat_database_xact_rollback_total',
+const dbTransactionRollback = new Gauge({
+  name: 'pg_stat_database_xact_rollback',
   help: 'Total number of transactions rolled back',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbBlocksHit = new Counter({
-  name: 'pg_stat_database_blks_hit_total',
+const dbBlocksHit = new Gauge({
+  name: 'pg_stat_database_blks_hit',
   help: 'Total number of disk blocks found in buffer cache',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbBlocksRead = new Counter({
-  name: 'pg_stat_database_blks_read_total',
+const dbBlocksRead = new Gauge({
+  name: 'pg_stat_database_blks_read',
   help: 'Total number of disk blocks read',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTupReturned = new Counter({
-  name: 'pg_stat_database_tup_returned_total',
+const dbTupReturned = new Gauge({
+  name: 'pg_stat_database_tup_returned',
   help: 'Total number of rows returned by queries',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTupFetched = new Counter({
-  name: 'pg_stat_database_tup_fetched_total',
+const dbTupFetched = new Gauge({
+  name: 'pg_stat_database_tup_fetched',
   help: 'Total number of rows fetched by queries',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTupInserted = new Counter({
-  name: 'pg_stat_database_tup_inserted_total',
+const dbTupInserted = new Gauge({
+  name: 'pg_stat_database_tup_inserted',
   help: 'Total number of rows inserted by queries',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTupUpdated = new Counter({
-  name: 'pg_stat_database_tup_updated_total',
+const dbTupUpdated = new Gauge({
+  name: 'pg_stat_database_tup_updated',
   help: 'Total number of rows updated by queries',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
-const dbTupDeleted = new Counter({
-  name: 'pg_stat_database_tup_deleted_total',
+const dbTupDeleted = new Gauge({
+  name: 'pg_stat_database_tup_deleted',
   help: 'Total number of rows deleted by queries',
   labelNames: ['datname', 'user_id', 'instance'],
 });
@@ -77,6 +78,46 @@ const dbTupDeleted = new Counter({
 const dbCacheHitRatio = new Gauge({
   name: 'pg_stat_database_cache_hit_ratio',
   help: 'Cache hit ratio for the database',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+// Lock metrics
+const pgLocksCount = new Gauge({
+  name: 'pg_locks_count',
+  help: 'Number of locks by mode',
+  labelNames: ['datname', 'user_id', 'instance', 'mode'],
+});
+
+// Index usage metrics
+const pgStatUserTablesIdxScan = new Gauge({
+  name: 'pg_stat_user_tables_idx_scan',
+  help: 'Number of index scans on user tables',
+  labelNames: ['datname', 'user_id', 'instance', 'relname'],
+});
+
+const pgStatUserTablesSeqScan = new Gauge({
+  name: 'pg_stat_user_tables_seq_scan',
+  help: 'Number of sequential scans on user tables',
+  labelNames: ['datname', 'user_id', 'instance', 'relname'],
+});
+
+// Activity metrics
+const pgStatActivityCount = new Gauge({
+  name: 'pg_stat_activity_count',
+  help: 'Count of connections by state',
+  labelNames: ['datname', 'user_id', 'instance', 'state'],
+});
+
+// Query execution time metrics (histogram simulation using gauges for percentiles)
+const pgStatStatementsExecTimeP95 = new Gauge({
+  name: 'pg_stat_statements_exec_time_p95',
+  help: '95th percentile of query execution time in seconds',
+  labelNames: ['datname', 'user_id', 'instance'],
+});
+
+const pgStatStatementsExecTimeP50 = new Gauge({
+  name: 'pg_stat_statements_exec_time_p50',
+  help: '50th percentile of query execution time in seconds',
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
@@ -101,6 +142,23 @@ const collectUserDatabaseMetrics = async (
     );
     const datname = dbNameResult.rows[0]?.datname || 'unknown';
 
+    // Helper to safely set/inc metrics
+    const safeSet = (metric, labels, value) => {
+      const numValue = Number(value);
+      if (Number.isFinite(numValue)) {
+        metric.labels(labels).set(numValue);
+      } else {
+        console.warn(`Skipping metric set: invalid value for`, labels, value);
+      }
+    };
+    const safeInc = (metric, labels, value) => {
+      // pg_stat_database values are absolute totals, use set() not inc()
+      const numValue = Number(value);
+      if (Number.isFinite(numValue)) {
+        metric.labels(labels).set(numValue);
+      }
+    };
+
     // Get pg_stat_database stats
     const statsResult = await pool.query(
       `
@@ -124,38 +182,53 @@ const collectUserDatabaseMetrics = async (
     if (statsResult.rows.length > 0) {
       const stats = statsResult.rows[0];
 
-      // Set metrics with user-specific labels
-      dbConnectionGauge.set(
+      safeSet(
+        dbConnectionGauge,
         { datname, user_id: userId, instance },
         stats.numbackends,
       );
-      dbConnectionCounter.inc(
+      safeInc(
+        dbConnectionCounter,
         { datname, user_id: userId, instance },
         stats.xact_commit,
       );
-      dbTransactionRollback.inc(
+      safeInc(
+        dbTransactionRollback,
         { datname, user_id: userId, instance },
         stats.xact_rollback,
       );
-      dbBlocksHit.inc({ datname, user_id: userId, instance }, stats.blks_hit);
-      dbBlocksRead.inc({ datname, user_id: userId, instance }, stats.blks_read);
-      dbTupReturned.inc(
+      safeInc(
+        dbBlocksHit,
+        { datname, user_id: userId, instance },
+        stats.blks_hit,
+      );
+      safeInc(
+        dbBlocksRead,
+        { datname, user_id: userId, instance },
+        stats.blks_read,
+      );
+      safeInc(
+        dbTupReturned,
         { datname, user_id: userId, instance },
         stats.tup_returned,
       );
-      dbTupFetched.inc(
+      safeInc(
+        dbTupFetched,
         { datname, user_id: userId, instance },
         stats.tup_fetched,
       );
-      dbTupInserted.inc(
+      safeInc(
+        dbTupInserted,
         { datname, user_id: userId, instance },
         stats.tup_inserted,
       );
-      dbTupUpdated.inc(
+      safeInc(
+        dbTupUpdated,
         { datname, user_id: userId, instance },
         stats.tup_updated,
       );
-      dbTupDeleted.inc(
+      safeInc(
+        dbTupDeleted,
         { datname, user_id: userId, instance },
         stats.tup_deleted,
       );
@@ -164,17 +237,117 @@ const collectUserDatabaseMetrics = async (
       const totalBlocks = stats.blks_hit + stats.blks_read;
       const cacheHitRatio =
         totalBlocks > 0 ? (stats.blks_hit / totalBlocks) * 100 : 0;
-      dbCacheHitRatio.set(
+      safeSet(
+        dbCacheHitRatio,
         { datname, user_id: userId, instance },
         cacheHitRatio,
       );
     }
 
-    // Set connection status to 1 (successful)
-    dbConnectionGauge.set({ datname, user_id: userId, instance }, 1);
+    // Collect lock metrics
+    try {
+      const locksResult = await pool.query(
+        `
+        SELECT mode, count(*) as count
+        FROM pg_locks
+        GROUP BY mode
+      `,
+      );
+
+      // Reset all lock metrics for this database
+      for (const mode of [
+        'accessexclusivelock',
+        'exclusivelock',
+        'sharelock',
+        'accesssharelock',
+      ]) {
+        pgLocksCount.labels(datname, userId, instance, mode).set(0);
+      }
+
+      // Set lock counts
+      for (const lock of locksResult.rows) {
+        const mode = lock.mode.toLowerCase();
+        safeSet(
+          pgLocksCount,
+          { datname, user_id: userId, instance, mode },
+          lock.count,
+        );
+      }
+    } catch (error) {
+      console.warn(`Could not collect lock metrics for user ${userId}:`, error);
+    }
+
+    // Collect index usage metrics
+    try {
+      const indexResult = await pool.query(
+        `
+        SELECT 
+          relname,
+          idx_scan,
+          seq_scan
+        FROM pg_stat_user_tables
+      `,
+      );
+
+      for (const table of indexResult.rows) {
+        safeSet(
+          pgStatUserTablesIdxScan,
+          { datname, user_id: userId, instance, relname: table.relname },
+          table.idx_scan,
+        );
+        safeSet(
+          pgStatUserTablesSeqScan,
+          { datname, user_id: userId, instance, relname: table.relname },
+          table.seq_scan,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `Could not collect index metrics for user ${userId}:`,
+        error,
+      );
+    }
+
+    // Collect activity metrics
+    try {
+      const activityResult = await pool.query(
+        `
+        SELECT state, count(*) as count
+        FROM pg_stat_activity
+        WHERE datname = $1
+        GROUP BY state
+      `,
+        [datname],
+      );
+
+      // Reset activity metrics
+      for (const state of [
+        'active',
+        'idle',
+        'idle in transaction',
+        'fastpath function call',
+        'disabled',
+      ]) {
+        pgStatActivityCount.labels(datname, userId, instance, state).set(0);
+      }
+
+      // Set activity counts
+      for (const activity of activityResult.rows) {
+        const state = activity.state || 'idle';
+        safeSet(
+          pgStatActivityCount,
+          { datname, user_id: userId, instance, state },
+          activity.count,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `Could not collect activity metrics for user ${userId}:`,
+        error,
+      );
+    }
   } catch (error) {
     console.error(`Error collecting metrics for user ${userId}:`, error);
-    setUserMetricsToError(userId, uriString);
   }
 };
 

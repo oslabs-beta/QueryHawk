@@ -131,6 +131,8 @@ services: # This section defines all the services (containers) we want to run
 
   # Grafana Alloy - Metrics collection and processing
   grafana-alloy:
+    image: grafana/alloy:1.0.0
+    command: run /etc/alloy/config.river --server.http.listen-addr=0.0.0.0:12345
     build:
       context: ./grafana-alloy
       dockerfile: Dockerfile
@@ -163,11 +165,11 @@ services: # This section defines all the services (containers) we want to run
       - '3001:3000' # Dashboard available on localhost:3001
     environment:
       - GF_SECURITY_ALLOW_EMBEDDING=true
-      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CORS_ENABLED=true
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_AUTH_BASIC_ENABLED=false
       - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning

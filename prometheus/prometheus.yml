@@ -51,6 +51,7 @@ scrape_configs:
     static_configs:
       - targets: ['otel-collector:8889'] # Port where collector exposes metrics
 
+
 #       #global config notes:
 #       Think of it like setting a timer:
 
