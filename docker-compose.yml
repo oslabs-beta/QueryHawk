@@ -167,7 +167,7 @@ services: # This section defines all the services (containers) we want to run
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CORS_ENABLED=true
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_AUTH_BASIC_ENABLED=false
       - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
