@@ -131,37 +131,43 @@ const collectUserDatabaseMetrics = async (
       );
       dbConnectionCounter.inc(
         { datname, user_id: userId, instance },
-        stats.xact_commit,
+        Number(stats.xact_commit),
       );
       dbTransactionRollback.inc(
         { datname, user_id: userId, instance },
-        stats.xact_rollback,
+        Number(stats.xact_rollback),
       );
-      dbBlocksHit.inc({ datname, user_id: userId, instance }, stats.blks_hit);
-      dbBlocksRead.inc({ datname, user_id: userId, instance }, stats.blks_read);
+      dbBlocksHit.inc(
+        { datname, user_id: userId, instance },
+        Number(stats.blks_hit),
+      );
+      dbBlocksRead.inc(
+        { datname, user_id: userId, instance },
+        Number(stats.blks_read),
+      );
       dbTupReturned.inc(
         { datname, user_id: userId, instance },
-        stats.tup_returned,
+        Number(stats.tup_returned),
       );
       dbTupFetched.inc(
         { datname, user_id: userId, instance },
-        stats.tup_fetched,
+        Number(stats.tup_fetched),
       );
       dbTupInserted.inc(
         { datname, user_id: userId, instance },
-        stats.tup_inserted,
+        Number(stats.tup_inserted),
       );
       dbTupUpdated.inc(
         { datname, user_id: userId, instance },
-        stats.tup_updated,
+        Number(stats.tup_updated),
       );
       dbTupDeleted.inc(
         { datname, user_id: userId, instance },
-        stats.tup_deleted,
+        Number(stats.tup_deleted),
       );
 
       // Calculate cache hit ratio
-      const totalBlocks = stats.blks_hit + stats.blks_read;
+      const totalBlocks = Number(stats.blks_hit) + Number(stats.blks_read);
       const cacheHitRatio =
         totalBlocks > 0 ? (stats.blks_hit / totalBlocks) * 100 : 0;
       dbCacheHitRatio.set(
