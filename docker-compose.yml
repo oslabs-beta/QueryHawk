@@ -131,6 +131,8 @@ services: # This section defines all the services (containers) we want to run
 
   # Grafana Alloy - Metrics collection and processing
   grafana-alloy:
+    # image: grafana/alloy:1.0.0
+    command: run /etc/alloy/config.river --server.http.listen-addr=0.0.0.0:12345
     build:
       context: ./grafana-alloy
       dockerfile: Dockerfile

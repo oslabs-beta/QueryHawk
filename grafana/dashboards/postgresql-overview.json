@@ -88,7 +88,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_xact_commit_total{datname=~\"$database\"}[$__rate_interval])",
+          "expr": "rate(pg_stat_database_xact_commit{datname=~\"$database\"}[$__rate_interval])",
           "legendFormat": "{{datname}} - commits",
           "range": true,
           "refId": "A"
@@ -150,7 +150,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "pg_stat_database_cache_hit_ratio{datname=~\"$database\"}",
+          "expr": "pg_stat_database_blks_hit_total{datname=~\"$database\"} / (pg_stat_database_blks_hit_total{datname=~\"$database\"} + pg_stat_database_blks_read_total{datname=~\"$database\"}) * 100",
           "legendFormat": "{{datname}}",
           "range": true,
           "refId": "A"

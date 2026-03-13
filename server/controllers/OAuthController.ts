@@ -25,6 +25,17 @@ interface DecodedToken {
 }
 
 class OAuthController {
+  // Public method to initiate GitHub OAuth login
+  public handleLogin(req: Request, res: Response): void {
+    const githubClientId = process.env.GITHUB_CLIENT_ID || '';
+    const redirectUri = process.env.GITHUB_REDIRECT_URI || '';
+    const githubAuthUrl =
+      `https://github.com/login/oauth/authorize?` +
+      `client_id=${githubClientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=read:user user:email`;
+    res.redirect(githubAuthUrl);
+  }
   // Private method to handle errors consistently throughout the controller
   private createError(message: string, statusCode: number = 500): CustomError {
     const error: CustomError = new Error(message);
@@ -104,8 +115,22 @@ class OAuthController {
   // Public method to validate the JWT token
   public validateToken(token: string): DecodedToken {
     try {
-      const decoded = jwt.verify(token, jwtSecret) as DecodedToken;
-      return decoded;
+      if (!jwtSecret || typeof jwtSecret !== 'string') {
+        throw this.createError('JWT secret is not configured', 500);
+      }
+      const decodedRaw = jwt.verify(token, jwtSecret);
+      // Validate required properties
+      if (
+        typeof decodedRaw === 'object' &&
+        decodedRaw !== null &&
+        'userId' in decodedRaw &&
+        'username' in decodedRaw &&
+        'email' in decodedRaw
+      ) {
+        return decodedRaw as DecodedToken;
+      } else {
+        throw this.createError('Invalid token payload', 401);
+      }
     } catch (error) {
       throw this.createError('Invalid token', 401);
     }

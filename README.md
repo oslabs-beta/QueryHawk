@@ -135,6 +135,18 @@ docker-compose up -d
 Frontend: http://localhost:5173
 ```
 
+### ⚠️ Important: Grafana Mimir Data Source URL
+
+If you are using Grafana Mimir version 2.10.0 or later, the Prometheus-compatible API is exposed under the `/prometheus` path (not `/api/v1`).
+
+**When adding Mimir as a Prometheus data source in Grafana, set the URL to:**
+
+```
+http://mimir:9009/prometheus
+```
+
+If you use the default (`/api/v1`), queries will fail with 404 errors. Always use `/prometheus` for Mimir 2.10.0+.
+
 ## Docker Cheatsheet
 
 Steps to create container:

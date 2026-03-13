@@ -1,4 +1,3 @@
-//handles both auth and protected routes
 import express, { Request, Response, NextFunction } from 'express';
 import userDatabaseController from '../controllers/userDatabaseController';
 import {
@@ -13,14 +12,15 @@ import {
   listActiveTargets,
   getTargetStatus,
 } from '../utils/alloyPostgresExporter';
+
 const router = express.Router();
 
-// ===== Auth Routes (public) =====
-router.post('/auth/github/callback', (req: Request, res: Response): void => {
-  OAuthController.handleCallback(req, res);
+// GitHub OAuth login route
+router.get('/auth/github', (req: Request, res: Response) => {
+  OAuthController.handleLogin(req, res);
 });
 
-// Get current user
+// OAuth routes
 router.get(
   '/auth/me',
   authenticateUser,
@@ -32,21 +32,25 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
-// Logout endpoint
 router.post(
   '/auth/logout',
   authenticateUser,
   (req: Request, res: Response): void => {
     try {
+      // If OAuthController has a logout method, call it here
       res.status(200).json({ message: 'Logged out successfully' });
     } catch {
       res.status(500).json({ error: 'Logout failed' });
     }
-  }
+  },
 );
+
+router.post('/auth/github/callback', (req: Request, res: Response): void => {
+  OAuthController.handleCallback(req, res);
+});
 
 // Add monitoring routes
 router.post('/connect', authenticateUser, setupMonitoring);
@@ -59,33 +63,33 @@ router.post(
   '/query-metrics',
   authenticateUser, // Add authentication middleware
   userDatabaseController.fetchUserMetrics,
-  userDatabaseController.saveMetricsToDB
+  userDatabaseController.saveMetricsToDB,
 );
 
 // Add the route to get saved queries
 router.get(
   '/saved-queries',
   authenticateUser,
-  userDatabaseController.getSavedQueries
+  userDatabaseController.getSavedQueries,
 );
 
 // Add query analysis endpoints
 router.post(
   '/query/analyze',
   authenticateUser,
-  userDatabaseController.analyzeQuery
+  userDatabaseController.analyzeQuery,
 );
 
 router.post(
   '/query/compare',
   authenticateUser,
-  userDatabaseController.compareQueries
+  userDatabaseController.compareQueries,
 );
 
 router.get(
   '/query/history/:queryHash',
   authenticateUser,
-  userDatabaseController.getQueryHistory
+  userDatabaseController.getQueryHistory,
 );
 
 //Docker exporter routes
@@ -125,7 +129,7 @@ router.post(
         },
       });
     }
-  }
+  },
 );
 
 router.post(
@@ -153,7 +157,7 @@ router.post(
         },
       });
     }
-  }
+  },
 );
 
 // Add new Alloy monitoring endpoints
@@ -177,7 +181,7 @@ router.get(
         },
       });
     }
-  }
+  },
 );
 
 router.get(
@@ -207,7 +211,7 @@ router.get(
         },
       });
     }
-  }
+  },
 );
 
 export default router;

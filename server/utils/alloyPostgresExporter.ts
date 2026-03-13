@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 const TARGET_DIR = './grafana-alloy/targets';
+const DYNAMIC_TARGETS_FILE = path.join(TARGET_DIR, 'dynamic-targets.json');
 
 interface ExporterConfig {
   userId: string;
@@ -80,10 +81,7 @@ export const setDatabaseUriToPostgresExporter = async ({
   port,
 }: ExporterConfig) => {
   try {
-    // Ensure target directory exists
     await ensureTargetDirectory();
-
-    // Verify directory access
     if (!(await isDirectoryWritable(TARGET_DIR))) {
       throw new Error(
         `Directory ${TARGET_DIR} is not writable by the backend service`
@@ -95,7 +93,7 @@ export const setDatabaseUriToPostgresExporter = async ({
     const targetPort = port || parsedPort;
 
     // Create Alloy target configuration
-    const target: AlloyTarget = {
+    const newTarget: AlloyTarget = {
       targets: [`${host}:${targetPort}`],
       labels: {
         user_id: userId,
@@ -108,21 +106,39 @@ export const setDatabaseUriToPostgresExporter = async ({
       },
     };
 
-    // Write target configuration to file
-    const targetFile = path.join(TARGET_DIR, `user-${userId}.json`);
-    await fs.writeFile(targetFile, JSON.stringify([target], null, 2));
+    // Read existing targets
+    let targets: AlloyTarget[] = [];
+    try {
+      const content = await fs.readFile(DYNAMIC_TARGETS_FILE, 'utf8');
+      targets = JSON.parse(content);
+    } catch (err) {
+      // If file doesn't exist, start with empty array
+      targets = [];
+    }
 
-    console.log(`Created Alloy target for user ${userId}:`, target);
+    // Update or add target for this user
+    const idx = targets.findIndex(
+      (t) => t.labels && t.labels.user_id === userId
+    );
+    if (idx >= 0) {
+      targets[idx] = newTarget;
+    } else {
+      targets.push(newTarget);
+    }
 
-    // Alloy automatically discovers new targets - no need to reload
+    // Write back to dynamic-targets.json
+    await fs.writeFile(DYNAMIC_TARGETS_FILE, JSON.stringify(targets, null, 2));
+
+    console.log(`Updated dynamic-targets.json for user ${userId}:`, newTarget);
+
     return {
       success: true,
-      targetFile,
-      target,
-      message: `PostgreSQL monitoring target created for user ${userId}`,
+      targetFile: DYNAMIC_TARGETS_FILE,
+      target: newTarget,
+      message: `PostgreSQL monitoring target updated for user ${userId}`,
     };
   } catch (error) {
-    console.error('Error creating Alloy target:', error);
+    console.error('Error updating dynamic Alloy target:', error);
     throw error;
   }
 };
@@ -235,3 +251,5 @@ export const getTargetStatus = async (
     return null;
   }
 };
+
+
