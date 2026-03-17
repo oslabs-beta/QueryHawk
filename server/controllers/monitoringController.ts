@@ -121,6 +121,20 @@ const pgStatStatementsExecTimeP50 = new Gauge({
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
+// Creating new metric definition for slow query mean exec time
+const dbSlowQueryMeanExecTime = new Gauge({
+  name: 'pg_query_mean_exec_time',
+  help: 'Mean execution time of slow queries in milliseconds',
+  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+});
+
+// Creating new metric defintion for slow query total number of calls.
+const dbSlowQueryCalls = new Gauge({
+  name: 'pg_query_calls',
+  help: 'Total number of times a query has been called',
+  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+});
+
 // User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
 let multiUserCollectionInterval: NodeJS.Timeout | null = null;
@@ -343,6 +357,61 @@ const collectUserDatabaseMetrics = async (
     } catch (error) {
       console.warn(
         `Could not collect activity metrics for user ${userId}:`,
+        error,
+      );
+    }
+    try {
+      // New connection for top 10 slow queries on user database
+      const slowQueryResults = await pool.query(
+        `
+          SELECT 
+            query,
+            queryid,
+            calls,
+            mean_exec_time
+          FROM pg_stat_statements
+          JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+          WHERE pg_database.datname = current_database()
+            AND query NOT ILIKE '%pg_stat_statements%'
+            AND query NOT ILIKE '%pg_locks%'
+            AND query NOT ILIKE '%pg_stat_activity%'
+            AND query NOT ILIKE '%pg_stat_user_tables%'
+          ORDER BY mean_exec_time
+          DESC LIMIT 10
+        `,
+      );
+
+      // Need to reset our query calls and mean execution time since if a query
+      // Drops out of our top 10 the label will still exist in Prometheus with its last value and never gets cleaned up
+      dbSlowQueryCalls.reset();
+      dbSlowQueryMeanExecTime.reset();
+
+      // We need to iterate through the results from our query
+      for (const row of slowQueryResults.rows) {
+        // need to create a label for each row that we iterate through
+        // for row.query there is a lot of white space and identation
+        // adding String?
+        const truncateQuery = (row.query ?? String(row.queryid))
+          .replace(/\s+/g, ' ')
+          .slice(0, 150);
+        // remove white space and cut the character length to a certain sieze
+        const labels = {
+          query: truncateQuery,
+          queryid: String(row.queryid),
+          datname,
+          user_id: userId,
+          instance,
+        };
+
+        // Need to increase Counter by the delta
+        dbSlowQueryCalls.set(labels, Number(row.calls));
+
+        // Need to set our mean exec since it is a gauge
+        dbSlowQueryMeanExecTime.set(labels, row.mean_exec_time);
+      }
+    } catch (error) {
+      console.error(
+        `Could not collect slow query metrics for user ${userId}`,
         error,
       );
     }
