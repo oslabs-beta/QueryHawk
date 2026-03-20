@@ -408,7 +408,7 @@ const collectUserDatabaseMetrics = async (
         // remove white space and cut the character length to a certain size
         const truncateQuery = (row.query ?? String(row.queryid))
           .replace(/\s+/g, ' ')
-          .slice(0, 150);
+          .slice(0, 60);
 
         const queryId = String(row.queryid);
 
@@ -430,6 +430,27 @@ const collectUserDatabaseMetrics = async (
 
         // Need to set our mean exec since it is a gauge
         dbSlowQueryMeanExecTime.set(labels, row.mean_exec_time);
+
+        // Storing full query text to query_metadata for grafana lookups.
+
+        try {
+          await appDbPool.query(
+            `
+            INSERT INTO query_metadata (queryid, user_id, query_text, last_seen)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (user_id, queryid)
+            DO UPDATE SET
+              query_text = EXCLUDED.query_text,
+              last_seen  = NOW()
+         `,
+            [row.queryid, parseInt(userId), row.query],
+          );
+        } catch (err) {
+          console.warn(
+            `Failed to sync query_metadata for queryid ${row.queryid}:`,
+            err,
+          );
+        }
       }
 
       // Find queryIds that were in the prev top 10 but are NOT in the current top 10

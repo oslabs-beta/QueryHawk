@@ -15,8 +15,8 @@ const shouldUseSsl =
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: Number(process.env.DB_POOL_MAX || 10),
-  idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_MS || 10000),
-  connectionTimeoutMillis: Number(process.env.DB_POOL_CONN_TIMEOUT_MS || 2000),
+  idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_MS || 30000),
+  connectionTimeoutMillis: Number(process.env.DB_POOL_CONN_TIMEOUT_MS || 10000),
   ssl: shouldUseSsl ? { rejectUnauthorized: false } : undefined,
 });
 
