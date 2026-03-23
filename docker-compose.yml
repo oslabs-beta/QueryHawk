@@ -171,6 +171,10 @@ services: # This section defines all the services (containers) we want to run
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
       - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_AUTH_BASIC_ENABLED=false
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # Need DB name and password to call our database for meta data for queries.
       - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
