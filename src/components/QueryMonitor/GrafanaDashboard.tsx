@@ -11,13 +11,18 @@ import {
 interface GrafanaPanelProps {
   panelId: string; // ID of the Grafana panel we want to display
   title: string; // Title to show above the panel
+  userId: string; // Need userId to show that specific user their dashboard.
 }
 
 /**
  * A React component that embeds a Grafana dashboard or panel using an iframe.
  * Supports authentication, auto-refresh, fullscreen mode, and theme customization.
  */
-const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
+const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({
+  panelId,
+  title,
+  userId,
+}) => {
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +45,7 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
         'auth.anonymous': 'true',
         kiosk: 'true',
         'var-database': 'postgres',
+        'var-user_id': userId,
       };
       // Add all params to the URL
       Object.entries(params).forEach(([key, value]) => {
@@ -50,7 +56,7 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({ panelId, title }) => {
       setError('Invalid dashboard URL');
       return '';
     }
-  }, [panelId]);
+  }, [panelId, userId]); // Added userId without this if the userId changes the url won't update because React thinks nothing changed
 
   // Component render
   return (
