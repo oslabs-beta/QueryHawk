@@ -125,22 +125,22 @@ const pgStatStatementsExecTimeP50 = new Gauge({
 const dbSlowQueryMeanExecTime = new Gauge({
   name: 'pg_query_mean_exec_time',
   help: 'Mean execution time of slow queries in milliseconds',
-  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+  labelNames: ['queryid', 'datname', 'user_id', 'instance'],
 });
 
 // Creating new metric defintion for slow query total number of calls.
 const dbSlowQueryCalls = new Gauge({
   name: 'pg_query_calls',
   help: 'Total number of times a query has been called',
-  labelNames: ['query', 'queryid', 'datname', 'user_id', 'instance'],
+  labelNames: ['queryid', 'datname', 'user_id', 'instance'],
 });
 
 // Tracks the set of queryIds that were in each user's top 10
 // during previous collection cycle.
 // Used to remove only that user's label that have dropped out of their top 10
 // without touching any other user's data.
-// A map where each key is userId String, and the value is a set of queryId strings and truncatedQuery.
-const previousSlowQueryIds = new Map<string, Map<string, string>>();
+// A map where each key is userId string, and the value is a Set of active queryId and string.
+const previousSlowQueryIds = new Map<string, Set<string>>();
 
 // User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
@@ -389,35 +389,23 @@ const collectUserDatabaseMetrics = async (
         [datname],
       );
 
-      // Retrieve the user's queryId from the previous cycle map
-      // Maps queryId -> truncatedQuery so we have exact label string for .remove()
-      // If this is the first cycle for this user, default to
-      // an empty Map - there's nothing stale yet.
-      const prevQueryId =
-        previousSlowQueryIds.get(userId) ?? new Map<string, string>();
+      // Retrieve the user's active queryId from the previous cycle
+      // If this is the first cycle for this user default to an empty Set
+      const prevQueryId = previousSlowQueryIds.get(userId) ?? new Set<string>();
 
-      // Build a fresh Map of queryId  -> truncatedQuery for THIS cycle.
-      // prom-client needs an exact label to .remove()
-      // We use this to figure out what dropped.
-      const currentQueryIds = new Map<string, string>();
+      // Build a fresh Set of active queryIds for this cycle
+      // Used to detect which QueryId dropped out of top 10.
+      const currentQueryIds = new Set<string>();
 
       // We need to iterate through the results from our query
       for (const row of slowQueryResults.rows) {
-        // need to create a label for each row that we iterate through
-        // for row.query there is a lot of white space and identation
-        // remove white space and cut the character length to a certain size
-        const truncateQuery = (row.query ?? String(row.queryid))
-          .replace(/\s+/g, ' ')
-          .slice(0, 60);
-
+        // need to create a label for each row that we iterate through for row.query
         const queryId = String(row.queryid);
 
-        // Store queryId -> truncate query so stale removal has exact label.
         // Track this queryId as active in the current cycle.
-        currentQueryIds.set(queryId, truncateQuery);
+        currentQueryIds.add(queryId);
 
         const labels = {
-          query: truncateQuery,
           queryid: queryId,
           datname,
           user_id: userId,
@@ -456,17 +444,15 @@ const collectUserDatabaseMetrics = async (
       // Find queryIds that were in the prev top 10 but are NOT in the current top 10
       // Call .remove() with that specific lable combination so only those exact
       // series are deleted from the prometheus registry. No other user's data is touched
-      for (const [staleQueryId, staleQueryText] of prevQueryId) {
+      for (const staleQueryId of prevQueryId) {
         if (!currentQueryIds.has(staleQueryId)) {
           dbSlowQueryCalls.remove({
-            query: staleQueryText,
             queryid: staleQueryId,
             datname,
             user_id: userId,
             instance,
           });
           dbSlowQueryMeanExecTime.remove({
-            query: staleQueryText,
             queryid: staleQueryId,
             datname,
             user_id: userId,
