@@ -165,12 +165,12 @@ services: # This section defines all the services (containers) we want to run
       - '3001:3000' # Dashboard available on localhost:3001
     environment:
       - GF_SECURITY_ALLOW_EMBEDDING=true
-      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true # Allow unauthenicated viewing since we are using JWT. If a user isnt authenitcated they shouldn't be able to enter the page. WE NEED TO FIX PROTECTED ROUTES
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_CORS_ENABLED=true
       - GF_SECURITY_CORS_ALLOW_ORIGIN=http://localhost:5173
-      - GF_AUTH_DISABLE_LOGIN_FORM=false
-      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_DISABLE_LOGIN_FORM=true # No login form needed for production. If development turn false to log into Grafana dashboard
+      - GF_AUTH_BASIC_ENABLED=false # Turn to true in development for the login to work.
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=${POSTGRES_DB}
