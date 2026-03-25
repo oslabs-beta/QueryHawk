@@ -296,6 +296,13 @@ const QueryMonitor: React.FC = () => {
               </Grid> */}
                 <Grid item xs={12} md={6}>
                   <GrafanaDashboard
+                    panelId='11'
+                    title='Top 10 Slowest Queries'
+                    userId={userId?.toString() ?? ''}
+                  ></GrafanaDashboard>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard
                     panelId='5'
                     title='Tuple Operations'
                     userId={userId?.toString() ?? ''}
