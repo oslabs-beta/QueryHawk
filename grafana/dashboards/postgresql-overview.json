@@ -22,6 +22,261 @@
   "panels": [
     {
       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_xact_commit{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - commits",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Transaction Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_stat_database_blks_hit{datname=~\"$database\"} / (pg_stat_database_blks_hit{datname=~\"$database\"} + pg_stat_database_blks_read{datname=~\"$database\"}) * 100",
+          "legendFormat": "{{datname}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Cache Hit Ratio",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Shows the current number of active connections to the database. Helps monitor connection usage and detect potential connection leaks.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_stat_database_numbackends{datname=~\"$database\"}",
+          "legendFormat": "{{datname}} - connections",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
       },
@@ -73,8 +328,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 0
+        "x": 12,
+        "y": 8
       },
       "id": 11,
       "options": {
@@ -83,7 +338,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -197,71 +452,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
-      },
-      "pluginVersion": "12.4.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "pg_stat_database_blks_hit{datname=~\"$database\"} / (pg_stat_database_blks_hit{datname=~\"$database\"} + pg_stat_database_blks_read{datname=~\"$database\"}) * 100",
-          "legendFormat": "{{datname}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Cache Hit Ratio",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "description": "Shows tuple operations (inserts, updates, deletes, fetches) to understand database workload patterns.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -311,209 +502,7 @@
               }
             ]
           },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(pg_stat_database_xact_commit{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - commits",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Transaction Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Shows the 95th and 50th percentile of query execution time, helping to identify performance issues.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(pg_stat_statements_exec_time_seconds_bucket{datname=~\"$database\"}[$__rate_interval])) by (le, datname))*1000",
-          "legendFormat": "{{datname}} - p95",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.5, sum(rate(pg_stat_statements_exec_time_seconds_bucket{datname=~\"$database\"}[$__rate_interval])) by (le, datname))*1000",
-          "legendFormat": "{{datname}} - p50",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Query Execution Time",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Shows the current number of active connections to the database. Helps monitor connection usage and detect potential connection leaks.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          }
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -523,7 +512,7 @@
         "x": 0,
         "y": 16
       },
-      "id": 3,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -537,7 +526,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -545,13 +534,46 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "pg_stat_database_numbackends{datname=~\"$database\"}",
-          "legendFormat": "{{datname}} - connections",
+          "expr": "rate(pg_stat_database_tup_inserted{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - inserts",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_tup_updated{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - updates",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_tup_deleted{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - deletes",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_tup_fetched{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - fetches",
+          "range": true,
+          "refId": "D"
         }
       ],
-      "title": "Active Connections",
+      "title": "Tuple Operations",
       "type": "timeseries"
     },
     {
@@ -632,7 +654,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -687,7 +709,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Shows tuple operations (inserts, updates, deletes, fetches) to understand database workload patterns.",
+      "description": "Shows disk I/O operations to identify potential disk pressure causing performance issues.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -737,7 +759,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "Bps"
         },
         "overrides": []
       },
@@ -747,7 +769,7 @@
         "x": 0,
         "y": 24
       },
-      "id": 5,
+      "id": 7,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -761,7 +783,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -769,8 +791,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_inserted{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - inserts",
+          "expr": "rate(pg_stat_database_blks_read{datname=~\"$database\"}[$__rate_interval]) * 8192",
+          "legendFormat": "{{datname}} - read bytes",
           "range": true,
           "refId": "A"
         },
@@ -780,35 +802,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_updated{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - updates",
+          "expr": "rate(pg_stat_database_blks_hit{datname=~\"$database\"}[$__rate_interval]) * 8192",
+          "legendFormat": "{{datname}} - cache hit bytes",
           "range": true,
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_deleted{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - deletes",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_fetched{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - fetches",
-          "range": true,
-          "refId": "D"
         }
       ],
-      "title": "Tuple Operations",
+      "title": "I/O Statistics",
       "type": "timeseries"
     },
     {
@@ -890,7 +890,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -923,7 +923,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Shows disk I/O operations to identify potential disk pressure causing performance issues.",
+      "description": "Shows database specific metrics for transaction rollbacks, which can identify failing operations.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -973,7 +973,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -983,7 +983,7 @@
         "x": 0,
         "y": 32
       },
-      "id": 7,
+      "id": 9,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -997,7 +997,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1005,8 +1005,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_blks_read{datname=~\"$database\"}[$__rate_interval]) * 8192",
-          "legendFormat": "{{datname}} - read bytes",
+          "expr": "rate(pg_stat_database_xact_rollback{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - rollbacks",
           "range": true,
           "refId": "A"
         },
@@ -1016,13 +1016,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_blks_hit{datname=~\"$database\"}[$__rate_interval]) * 8192",
-          "legendFormat": "{{datname}} - cache hit bytes",
+          "expr": "rate(pg_stat_database_xact_commit{datname=~\"$database\"}[$__rate_interval])",
+          "legendFormat": "{{datname}} - commits",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "I/O Statistics",
+      "title": "Transaction Commits vs Rollbacks",
       "type": "timeseries"
     },
     {
@@ -1103,7 +1103,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1147,7 +1147,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Shows database specific metrics for transaction rollbacks, which can identify failing operations.",
+      "description": "Shows the 95th and 50th percentile of query execution time, helping to identify performance issues.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1197,7 +1197,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -1207,7 +1207,7 @@
         "x": 0,
         "y": 40
       },
-      "id": 9,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -1221,7 +1221,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.1",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1229,8 +1229,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_xact_rollback{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - rollbacks",
+          "expr": "histogram_quantile(0.95, sum(rate(pg_stat_statements_exec_time_seconds_bucket{datname=~\"$database\"}[$__rate_interval])) by (le, datname))*1000",
+          "legendFormat": "{{datname}} - p95",
           "range": true,
           "refId": "A"
         },
@@ -1240,13 +1240,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_xact_commit{datname=~\"$database\"}[$__rate_interval])",
-          "legendFormat": "{{datname}} - commits",
+          "expr": "histogram_quantile(0.5, sum(rate(pg_stat_statements_exec_time_seconds_bucket{datname=~\"$database\"}[$__rate_interval])) by (le, datname))*1000",
+          "legendFormat": "{{datname}} - p50",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Transaction Commits vs Rollbacks",
+      "title": "Query Execution Time",
       "type": "timeseries"
     }
   ],
@@ -1333,6 +1333,6 @@
   "timezone": "browser",
   "title": "PostgreSQL Overview",
   "uid": "postgresql-overview",
-  "version": 5,
+  "version": 2,
   "weekStart": ""
 }
