@@ -44,6 +44,7 @@ const GrafanaDashboard: React.FC<GrafanaPanelProps> = ({
         panelId,
         'auth.anonymous': 'true',
         kiosk: 'true',
+        hideLogo: 'true',
         'var-database': 'postgres',
         'var-user_id': userId,
       };
