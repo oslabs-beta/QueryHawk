@@ -24,12 +24,13 @@ datasources:
   # PostgreSQL Data Source
   - name: PostgreSQL
     type: postgres
-    url: supabase:5432
-    user: postgres # Database user
+    url: $POSTGRES_HOST:5432 # Need our actual url for our database since Supabase is on the cloud and not our container
+    user: $POSTGRES_USER # Database user
     secureJsonData:
-      password: ${POSTGRES_PASSWORD}
+      password: $POSTGRES_PASSWORD
     jsonData:
-      sslmode: 'disable' # Disable SSL for local development
+      database: $POSTGRES_DB
+      sslmode: 'require' # Disable SSL for local development. If we are using supabase on the cloud we need to change it to require.
       maxOpenConns: 100 # Maximum number of open connections
       maxIdleConns: 100 # Maximum number of idle connections
       connMaxLifetime: 14400 # Maximum connection lifetime in seconds

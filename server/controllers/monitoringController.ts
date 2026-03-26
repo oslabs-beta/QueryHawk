@@ -121,6 +121,27 @@ const pgStatStatementsExecTimeP50 = new Gauge({
   labelNames: ['datname', 'user_id', 'instance'],
 });
 
+// Creating new metric definition for slow query mean exec time
+const dbSlowQueryMeanExecTime = new Gauge({
+  name: 'pg_query_mean_exec_time',
+  help: 'Mean execution time of slow queries in milliseconds',
+  labelNames: ['queryid', 'datname', 'user_id', 'instance'],
+});
+
+// Creating new metric defintion for slow query total number of calls.
+const dbSlowQueryCalls = new Gauge({
+  name: 'pg_query_calls',
+  help: 'Total number of times a query has been called',
+  labelNames: ['queryid', 'datname', 'user_id', 'instance'],
+});
+
+// Tracks the set of queryIds that were in each user's top 10
+// during previous collection cycle.
+// Used to remove only that user's label that have dropped out of their top 10
+// without touching any other user's data.
+// A map where each key is userId string, and the value is a Set of active queryId and string.
+const previousSlowQueryIds = new Map<string, Set<string>>();
+
 // User connection pools management (per-user pools for metrics collection)
 const userConnectionPools: Map<string, pg.Pool> = new Map();
 let multiUserCollectionInterval: NodeJS.Timeout | null = null;
@@ -343,6 +364,108 @@ const collectUserDatabaseMetrics = async (
     } catch (error) {
       console.warn(
         `Could not collect activity metrics for user ${userId}:`,
+        error,
+      );
+    }
+
+    try {
+      // New connection for top 10 slow queries on user database
+      const slowQueryResults = await pool.query(
+        `
+          SELECT 
+            query,
+            queryid,
+            calls,
+            mean_exec_time
+          FROM pg_stat_statements
+          WHERE dbid = (SELECT oid FROM pg_database WHERE datname = $1)
+            AND query NOT LIKE 'pg_%'
+            AND query NOT ILIKE '%pg_timezone_names%'
+            AND query NOT LIKE '--%'
+            AND query NOT LIKE 'do $$%'
+          ORDER BY mean_exec_time
+          DESC LIMIT 10
+        `,
+        [datname],
+      );
+
+      // Retrieve the user's active queryId from the previous cycle
+      // If this is the first cycle for this user default to an empty Set
+      const prevQueryId = previousSlowQueryIds.get(userId) ?? new Set<string>();
+
+      // Build a fresh Set of active queryIds for this cycle
+      // Used to detect which QueryId dropped out of top 10.
+      const currentQueryIds = new Set<string>();
+
+      // We need to iterate through the results from our query
+      for (const row of slowQueryResults.rows) {
+        // need to create a label for each row that we iterate through for row.query
+        const queryId = String(row.queryid);
+
+        // Track this queryId as active in the current cycle.
+        currentQueryIds.add(queryId);
+
+        const labels = {
+          queryid: queryId,
+          datname,
+          user_id: userId,
+          instance,
+        };
+
+        // Need to set our slow query calls since it is a gaunge.
+        // Not using Counter since we would have needed to use delta
+        dbSlowQueryCalls.set(labels, Number(row.calls));
+
+        // Need to set our mean exec since it is a gauge
+        dbSlowQueryMeanExecTime.set(labels, row.mean_exec_time);
+
+        // Storing full query text to query_metadata for grafana lookups.
+
+        try {
+          await appDbPool.query(
+            `
+            INSERT INTO query_metadata (queryid, user_id, query_text, last_seen)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (user_id, queryid)
+            DO UPDATE SET
+              query_text = EXCLUDED.query_text,
+              last_seen  = NOW()
+         `,
+            [row.queryid, parseInt(userId), row.query],
+          );
+        } catch (err) {
+          console.warn(
+            `Failed to sync query_metadata for queryid ${row.queryid}:`,
+            err,
+          );
+        }
+      }
+
+      // Find queryIds that were in the prev top 10 but are NOT in the current top 10
+      // Call .remove() with that specific lable combination so only those exact
+      // series are deleted from the prometheus registry. No other user's data is touched
+      for (const staleQueryId of prevQueryId) {
+        if (!currentQueryIds.has(staleQueryId)) {
+          dbSlowQueryCalls.remove({
+            queryid: staleQueryId,
+            datname,
+            user_id: userId,
+            instance,
+          });
+          dbSlowQueryMeanExecTime.remove({
+            queryid: staleQueryId,
+            datname,
+            user_id: userId,
+            instance,
+          });
+        }
+      }
+
+      // save the current cycles queryids as the new "previous" state for this user's next cycle.
+      previousSlowQueryIds.set(userId, currentQueryIds);
+    } catch (error) {
+      console.error(
+        `Could not collect slow query metrics for user ${userId}`,
         error,
       );
     }

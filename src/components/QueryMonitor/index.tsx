@@ -271,37 +271,77 @@ const QueryMonitor: React.FC = () => {
             <>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='1' title='Transaction Rate' />
+                  <GrafanaDashboard
+                    panelId='1'
+                    title='Transaction Rate'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='2' title='Cache Hit Ratio' />
+                  <GrafanaDashboard
+                    panelId='2'
+                    title='Cache Hit Ratio'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='3' title='Active Connections' />
+                  <GrafanaDashboard
+                    panelId='3'
+                    title='Active Connections'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 {/* <Grid item xs={12} md={6}>
                 <GrafanaDashboard panelId="4" title="Query Execution Time" />
               </Grid> */}
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='5' title='Tuple Operations' />
+                  <GrafanaDashboard
+                    panelId='11'
+                    title='Top 10 Slowest Queries'
+                    userId={userId?.toString() ?? ''}
+                  ></GrafanaDashboard>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='6' title='Lock Metrics' />
+                  <GrafanaDashboard
+                    panelId='5'
+                    title='Tuple Operations'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='7' title='I/O Statistics' />
+                  <GrafanaDashboard
+                    panelId='6'
+                    title='Lock Metrics'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='8' title='Index Usage' />
+                  <GrafanaDashboard
+                    panelId='7'
+                    title='I/O Statistics'
+                    userId={userId?.toString() ?? ''}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <GrafanaDashboard
+                    panelId='8'
+                    title='Index Usage'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <GrafanaDashboard
                     panelId='9'
                     title='Transaction Commits vs Rollbacks'
+                    userId={userId?.toString() ?? ''}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <GrafanaDashboard panelId='10' title='Long-Running Queries' />
+                  <GrafanaDashboard
+                    panelId='10'
+                    title='Long-Running Queries'
+                    userId={userId?.toString() ?? ''}
+                  />
                 </Grid>
               </Grid>
               <Divider sx={{ my: 4 }} />
