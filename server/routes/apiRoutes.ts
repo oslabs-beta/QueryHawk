@@ -12,6 +12,7 @@ import {
   listActiveTargets,
   getTargetStatus,
 } from '../utils/alloyPostgresExporter';
+import redisController from '../controllers/redisController';
 
 const router = express.Router();
 
@@ -71,6 +72,14 @@ router.get(
   '/saved-queries',
   authenticateUser,
   userDatabaseController.getSavedQueries,
+);
+
+// Run query with redis
+router.post(
+  '/run-query/redis',
+  authenticateUser,
+  userDatabaseController.fetchOriginalQuery,
+  redisController.runRedisTest,
 );
 
 // Add query analysis endpoints
