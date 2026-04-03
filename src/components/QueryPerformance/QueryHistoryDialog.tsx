@@ -33,9 +33,12 @@ interface QueryHistoryDialogProps {
   open: boolean;
   onClose: () => void;
   savedQueries: SavedQuery[];
-  onLoadQuery: (queryText: string, metrics: QueryMetrics) => void;
+  onLoadQuery: (
+    queryText: string,
+    metrics: QueryMetrics,
+    queryId: number,
+  ) => void;
   onOpenCompare: () => void;
-  onCompareWithCurrent?: (historicalQuery: SavedQuery) => void;
 }
 
 const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
@@ -44,7 +47,6 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
   savedQueries,
   onLoadQuery,
   onOpenCompare,
-  onCompareWithCurrent,
 }) => {
   return (
     <Dialog
@@ -113,23 +115,12 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
                         size='small'
                         sx={{
                           textTransform: 'none',
-                          mr: 1,
                         }}
                         onClick={() =>
-                          onLoadQuery(item.queryText, item.metrics)
+                          onLoadQuery(item.queryText, item.metrics, item.id)
                         }
                       >
                         Load
-                      </Button>
-                      <Button
-                        variant='contained'
-                        size='small'
-                        sx={{
-                          textTransform: 'none',
-                        }}
-                        onClick={() => onCompareWithCurrent?.(item)}
-                      >
-                        Compare
                       </Button>
                     </TableCell>
                   </TableRow>
