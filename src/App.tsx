@@ -22,7 +22,7 @@ function App() {
           }
         />
         <Route
-          path='/test-query'
+          path='/query-tester'
           element={
             <ProtectedRoute>
               <TestQueryPage />
