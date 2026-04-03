@@ -36,6 +36,7 @@ type UserDatabaseController = {
   analyzeQuery: RequestHandler;
   compareQueries: RequestHandler;
   getQueryHistory: RequestHandler;
+  fetchOriginalQuery: RequestHandler;
 };
 
 // Consistent EXPLAIN wrapper for query analysis
@@ -334,6 +335,48 @@ const userDatabaseController: UserDatabaseController = {
         'Failed to fetch query history',
         error instanceof Error ? error.message : undefined,
       );
+    }
+  },
+  // Fetch one specific query by queryID
+  fetchOriginalQuery: async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const { queryId } = req.body;
+      if (!queryId) {
+        sendBadRequest(res, 'Query id is missing.');
+        return;
+      }
+      const queryResult = await appDbPool.query(
+        `
+        SELECT 
+          q.query_text AS "queryText",
+          m.execution_time AS "executionTime"
+        FROM queries q
+        JOIN metrics m ON q.id = m.query_id
+        WHERE q.id = $1
+       
+      `,
+        [queryId],
+      );
+
+      if (!queryResult.rows[0]) {
+        sendBadRequest(res, `Query not found`);
+        return;
+      }
+      res.locals.queryMetrics = queryResult.rows[0].executionTime;
+      res.locals.originalQuery = queryResult.rows[0].queryText;
+      return next();
+    } catch (err) {
+      return next({
+        log: `userDatabaseController: fetchOriginalQuery: Unexpected error ${err instanceof Error ? err.message : 'Unknown error'} `,
+        status: 500,
+        message: {
+          err: `Error has occured while fetching specific query results.`,
+        },
+      });
     }
   },
 };
