@@ -7,6 +7,7 @@ import {
   CircularProgress,
   TextField,
   Typography,
+  Tooltip,
 } from '@mui/material';
 
 // Define the button styles
@@ -16,6 +17,7 @@ const buttonStyles = {
   px: 4,
   borderRadius: 1.5,
   whiteSpace: 'nowrap',
+  width: '100%',
 };
 
 // Define the input styles
@@ -61,6 +63,7 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
               fullWidth
               value={uri_string}
               onChange={(e) => onUriChange(e.target.value)}
+              // helperText={!uri_string ? 'Required for Redis Comparison' : ''}
               sx={inputStyles}
             />
             <TextField
@@ -81,18 +84,33 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
             />
-            <Button
-              variant='contained'
-              onClick={onSubmit}
-              disabled={loading || !uri_string || !query || !queryName}
-              sx={buttonStyles}
+            <Tooltip
+              title={
+                !uri_string || !queryName || !query
+                  ? 'Please fill in Database URI, Query Name, and Query to fetch Metrics'
+                  : ''
+              }
+              componentsProps={{
+                tooltip: {
+                  sx: { fontSize: '0.8rem' },
+                },
+              }}
             >
-              {loading ? (
-                <CircularProgress size={24} color='inherit' />
-              ) : (
-                'Fetch Metrics'
-              )}
-            </Button>
+              <span>
+                <Button
+                  variant='contained'
+                  onClick={onSubmit}
+                  disabled={loading || !uri_string || !query || !queryName}
+                  sx={buttonStyles}
+                >
+                  {loading ? (
+                    <CircularProgress size={24} color='inherit' />
+                  ) : (
+                    'Fetch Metrics'
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
         </CardContent>
       </Card>
