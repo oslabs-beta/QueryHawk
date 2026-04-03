@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Typography,
@@ -8,59 +8,24 @@ import {
   CardContent,
   Paper,
 } from '@mui/material';
-import { SavedQuery } from './QueryHistory';
+import { SavedQuery } from './QueryHistoryDialog';
 import MetricsTable from './MetricsTable';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
-import LeanQueryAnalyzer from './LeanQueryAnalyzer';
 
-interface QueryComparisonViewProps {
+interface QueryComparisonPageProps {
   firstQuery: SavedQuery | null;
   secondQuery: SavedQuery | null;
   onExitCompare: () => void;
+  onOpenCompare: () => void;
 }
 
-const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
+const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
   firstQuery,
   secondQuery,
   onExitCompare,
+  onOpenCompare,
 }) => {
-  const [comparisonResults, setComparisonResults] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
   if (!firstQuery || !secondQuery) return null;
-
-  // Function to compare queries using the enhanced API
-  const handleCompareQueries = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:4002/api/query/compare', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query1: firstQuery.queryText,
-          query2: secondQuery.queryText,
-        }),
-      });
-
-      if (response.ok) {
-        const results = await response.json();
-        setComparisonResults(results);
-      }
-    } catch (error) {
-      console.error('Comparison failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Auto-compare when component mounts
-  useEffect(() => {
-    handleCompareQueries();
-  }, [firstQuery, secondQuery]);
 
   return (
     <Box>
@@ -76,12 +41,11 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           Query Comparison
         </Typography>
         <Button
-          onClick={handleCompareQueries}
+          onClick={onOpenCompare}
           variant='contained'
           startIcon={<CompareArrowsIcon />}
-          disabled={loading}
         >
-          {loading ? 'Comparing...' : 'Compare Queries'}
+          Compare Queries
         </Button>
         <Button
           variant='outlined'
@@ -141,10 +105,12 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 </Typography>
                 <Typography variant='h6' color='white'>
                   {Math.abs(
-                    ((firstQuery.metrics.executionTime -
-                      secondQuery.metrics.executionTime) /
-                      firstQuery.metrics.executionTime) *
-                      100
+                    ((parseFloat(firstQuery.metrics.executionTime.toFixed(2)) -
+                      parseFloat(
+                        secondQuery.metrics.executionTime.toFixed(2),
+                      )) /
+                      parseFloat(firstQuery.metrics.executionTime.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.executionTime >
@@ -162,10 +128,10 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 </Typography>
                 <Typography variant='h6' color='white'>
                   {Math.abs(
-                    ((firstQuery.metrics.planningTime -
-                      secondQuery.metrics.planningTime) /
-                      firstQuery.metrics.planningTime) *
-                      100
+                    ((parseFloat(firstQuery.metrics.planningTime.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.planningTime.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.planningTime.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.planningTime >
@@ -183,10 +149,10 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 </Typography>
                 <Typography variant='h6' color='white'>
                   {Math.abs(
-                    ((firstQuery.metrics.totalCost -
-                      secondQuery.metrics.totalCost) /
-                      firstQuery.metrics.totalCost) *
-                      100
+                    ((parseFloat(firstQuery.metrics.totalCost.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.totalCost.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.totalCost.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost
@@ -198,16 +164,8 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           </Grid>
         </CardContent>
       </Card>
-
-      {/* Enhanced Lean Query Analyzer Comparison */}
-      {comparisonResults && (
-        <LeanQueryAnalyzer
-          comparisonData={comparisonResults}
-          mode='comparison'
-        />
-      )}
     </Box>
   );
 };
 
-export default QueryComparisonView;
+export default QueryComparisonPage;
