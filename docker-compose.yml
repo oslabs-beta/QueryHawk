@@ -61,18 +61,27 @@ services: # This section defines all the services (containers) we want to run
       - CORS_ORIGIN=http://localhost:5173
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URI=${SUPABASE_URI}
+      - REDIS_URL=redis://redis:6379
       - NODE_ENV=development
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana-alloy:14318/v1/traces # OTLP HTTP endpoint for Grafana Alloy
       - OTEL_SERVICE_NAME=queryhawk-backend
       - OTEL_SERVICE_VERSION=1.0.0
     depends_on:
       - jaeger
+      - redis
     networks:
       - queryhawk_monitoring_network
     deploy:
       resources:
         limits:
           memory: 768M
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - queryhawk_monitoring_network
 
   jaeger: # This is the name we're giving to our service
     image: jaegertracing/all-in-one:latest
