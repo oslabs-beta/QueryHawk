@@ -50,7 +50,7 @@ const MetricsTable: React.FC<MetricsTableProps> = ({ metrics }) => {
           <TableRow>
             <TableCell>Execution Time</TableCell>
             <TableCell align='right'>
-              {Math.floor(metrics.executionTime).toLocaleString()} ms
+              {metrics.executionTime.toFixed(2)} ms
             </TableCell>
           </TableRow>
 
