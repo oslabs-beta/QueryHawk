@@ -11,9 +11,9 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { SavedQuery } from './QueryHistory';
+import { SavedQuery } from './QueryHistoryDialog';
 
-interface ComparisonDialogProps {
+interface QueryComparisonDialogProps {
   open: boolean;
   onClose: () => void;
   savedQueries: SavedQuery[];
@@ -25,7 +25,7 @@ interface ComparisonDialogProps {
   onCompare: () => void;
 }
 
-const ComparisonDialog: React.FC<ComparisonDialogProps> = ({
+const QueryComparisonDialog: React.FC<QueryComparisonDialogProps> = ({
   open,
   onClose,
   savedQueries,
@@ -84,7 +84,7 @@ const ComparisonDialog: React.FC<ComparisonDialogProps> = ({
           onClick={onCompare}
           variant='contained'
           sx={{
-            textTransform: "none"
+            textTransform: 'none',
           }}
           disabled={
             selectedQueries.first === null || selectedQueries.second === null
@@ -97,4 +97,4 @@ const ComparisonDialog: React.FC<ComparisonDialogProps> = ({
   );
 };
 
-export default ComparisonDialog;
+export default QueryComparisonDialog;
