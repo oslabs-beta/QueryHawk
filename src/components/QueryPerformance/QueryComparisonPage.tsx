@@ -10,20 +10,17 @@ import {
 } from '@mui/material';
 import { SavedQuery } from './QueryHistoryDialog';
 import MetricsTable from './MetricsTable';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 interface QueryComparisonPageProps {
   firstQuery: SavedQuery | null;
   secondQuery: SavedQuery | null;
   onExitCompare: () => void;
-  onOpenCompare: () => void;
 }
 
 const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
   firstQuery,
   secondQuery,
   onExitCompare,
-  onOpenCompare,
 }) => {
   if (!firstQuery || !secondQuery) return null;
 
@@ -40,13 +37,7 @@ const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
         <Typography variant='h5' color='white'>
           Query Comparison
         </Typography>
-        <Button
-          onClick={onOpenCompare}
-          variant='contained'
-          startIcon={<CompareArrowsIcon />}
-        >
-          Compare Queries
-        </Button>
+
         <Button
           variant='outlined'
           onClick={onExitCompare}
