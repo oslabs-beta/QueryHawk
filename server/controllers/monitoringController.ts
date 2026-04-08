@@ -383,6 +383,7 @@ const collectUserDatabaseMetrics = async (
             AND query NOT ILIKE '%pg_timezone_names%'
             AND query NOT LIKE '--%'
             AND query NOT LIKE 'do $$%'
+            AND query NOT ILIKE 'EXPLAIN%' 
           ORDER BY mean_exec_time
           DESC LIMIT 10
         `,
