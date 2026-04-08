@@ -170,7 +170,7 @@ const userDatabaseController: UserDatabaseController = {
         ],
       );
 
-      res.status(200).json(queryMetrics);
+      res.status(200).json({ ...queryMetrics, id: queryId });
     } catch (err) {
       console.error('Error saving metrics', err);
       return next({
