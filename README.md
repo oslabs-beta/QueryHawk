@@ -32,12 +32,13 @@ QueryHawk monitors and visualizes key SQL metrics to help users improve database
 
 ## Introduction
 
-QueryHawk delivers comprehensive SQL database monitoring and visualization, empowering developers and database administrators to optimize performance and quickly identify bottlenecks. Built on industry-standard tools including Prometheus, Grafana, and PostgreSQL Exporter, all containerized with Docker for seamless deployment.
+QueryHawk delivers comprehensive SQL database monitoring and visualization, empowering developers and database administrators to optimize performance and quickly identify bottlenecks. Built on industry-standard tools including Grafana, Grafana Alloy, Jaeger, Loki, and Mimir, all containerized with Docker for seamless deployment.
 
 - ✅ Real-time SQL query analysis with millisecond-precision execution metrics
 - ✅ Complete visibility into query execution plans with detailed buffer and cache statistics
 - ✅ Interactive dashboards for visualizing database health and performance trends
 - ✅ Query comparison tool to benchmark and optimize SQL performance
+- ✅ Redis performance testing to benchmark PostgreSQL execution time against Redis cache retrieval
 - ✅ Track query execution paths across entire application with distributed tracing
 
 With QueryHawk's intuitive interface, teams can proactively manage database performance, reduce troubleshooting time, and make data-driven optimization decisions. The containerized architecture ensures easy deployment across development, staging, and production environments.
@@ -48,12 +49,13 @@ Gain insights into your SQL databases and enhance how your team approaches datab
 
 ## 🔍 Deep SQL Query Analysis
 
-- Execution Plan Visibility: Analyze "EXPLAIN ANALYZE" results with detailed metrics on planning time, execution time, and resource usage.
-- Cache Performance Metrics: Monitor cache hit ratios and buffer statistics to identify memory optimization opportunities.
-- Query Comparison: Evaluate startup and total costs for queries to understand their impact on database resources.
-- Secure Connection Testing: Connect to any PostgreSQL database with SSL support and connection validation.
-- Query Performance Profiling: Test queries before deployment with comprehensive performance metrics.
-- Historical Comparison: Store and compare query performance over time to track optimization progress.
+- Execution Plan Analysis: Run "EXPLAIN ANALYZE" to capture detailed planning and execution metrics in real time.
+- Query Performance Profiling: Measure execution time, rows processed, loops, and buffer usage before deploying queries.
+- Side-by-Side Query Comparison: Compare unoptimized vs optimized queries with clear performance breakdowns.
+- Redis Benchmarking: Benchmark PostgreSQL queries against Redis cache retrieval to quantify caching improvements.
+- Cache Insights: Analyze cache hit ratios and shared buffer usage to identify memory optimization opportunities.
+- Historical Tracking: Save and revisit past queries to monitor performance improvements over time.
+- Secure Database Connections: Connect to any PostgreSQL database with SSL support and connection validation.
 
 ## 📊 Real-time Performance Monitoring
 
@@ -62,6 +64,7 @@ Once connected, QueryHawk will display multiple metrics, including:
 - Transaction rate
 - Cache hit ratio
 - Active connections
+- Top 10 Slowest Queries
 - Tuple operations
 - Lock metrics
 - I/O statistics
@@ -88,7 +91,7 @@ QueryHawk includes distributed tracing capabilities:
 
 - Docker-based Deployment: Quickly deploy the entire monitoring stack with Docker Compose.
 - Secure Authentication: GitHub OAuth integration for secure user management.
-- Dynamic Exporters: Automatically create and manage PostgreSQL exporters.
+- Dynamic Exporters: Automatically create and manage Grafana Alloy targets for PostgreSQL monitoring without restarting services.
 
 ## Initial Set-up and Installation
 
@@ -121,6 +124,13 @@ GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 JWT_SECRET=your_jwt_secret
 SUPABASE_URI=your_supabase_uri
+
+
+# Supabase PostgreSQL connection details (found in Supabase dashboard under Project Settings > Database)
+POSTGRES_HOST=aws-0-us-east-2.pooler.supabase.com   # Your Supabase pooler host
+POSTGRES_USER=postgres.your_project_ref             # Format: postgres.<your-project-ref>
+POSTGRES_DB=postgres                                # Default Supabase database name
+POSTGRES_PASSWORD=your_database_password            # Your Supabase database password
 ```
 
 4. Start the services
@@ -222,13 +232,17 @@ docker system prune -a
 ![Postman](https://img.shields.io/badge/Postman-ff6c37?style=for-the-badge&logo=postman&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![NPM](https://img.shields.io/badge/NPM-%23CB3837.svg?style=for-the-badge&logo=npm&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Jaeger](https://img.shields.io/badge/Jaeger-66CFE3?style=for-the-badge&logo=jaeger&logoColor=white)
+![Loki](https://img.shields.io/badge/Loki-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-F57600?style=for-the-badge&logo=OpenTelemetry&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+![Grafana Alloy](https://img.shields.io/badge/Grafana_Alloy-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+![Mimir](https://img.shields.io/badge/Mimir-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5BF?style=for-the-badge&logo=recharts&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-FFAA33?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
 ![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
 ![.env](https://img.shields.io/badge/.env-ECD53F?style=for-the-badge&logoColor=white)
-![Dockerode](https://img.shields.io/badge/Dockerode-blue?style=for-the-badge&logo=dockerode&logoColor=white)
 ![TS-Node](https://img.shields.io/badge/TSNode-blue?style=for-the-badge&logo=ts-node&logoColor=white)
 ![Nodemon](https://img.shields.io/badge/Nodemon-76D04B?style=for-the-badge&logo=nodemon&logoColor=white)
 ![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)
@@ -243,13 +257,17 @@ docker system prune -a
 
 <img src="./src/components/assets/QH_Login.png" alt="Login" width=50% />
 
+<br>
 </div>
 
 ---
 
 <div align="center">
+
+<br>
 
 ![Dashboard](/src/components/assets/QH_Dashboard.png)
+<br>
 
 </div>
 
@@ -257,15 +275,35 @@ docker system prune -a
 
 <div align="center">
 
-![Query](/src/components/assets/QH_Query.png)
-
-</div>
-
----
-
-<div align="center">
+<br>
 
 ![Metrics](/src/components/assets/QH_Metrics.png)
+
+<br>
+
+</div>
+
+---
+
+<div align="center">
+
+<br>
+
+![Query Comparison](./src/components/assets/QH_QueryComparison.png)
+
+<br>
+
+</div>
+
+---
+
+<div align="center">
+
+<br>
+
+![Redis vs PostgreSQL](./src/components/assets/QH_RedisVsPostgreSQL.png)
+
+<br>
 
 </div>
 
