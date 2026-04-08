@@ -11,6 +11,7 @@ import {
 
 // Define the interface for query metrics
 export interface QueryMetrics {
+  id: number; // Required in order to run redis on fresh new query test
   executionTime: number;
   planningTime: number;
   rowsReturned: number;
@@ -82,7 +83,9 @@ const MetricsTable: React.FC<MetricsTableProps> = ({ metrics }) => {
 
           <TableRow>
             <TableCell>Cache Hit Ratio</TableCell>
-            <TableCell align='right'>{metrics.cacheHitRatio}%</TableCell>
+            <TableCell align='right'>
+              {metrics.cacheHitRatio.toFixed(2)}%
+            </TableCell>
           </TableRow>
 
           <TableRow>
