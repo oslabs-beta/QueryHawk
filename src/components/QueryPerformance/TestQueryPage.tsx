@@ -18,7 +18,6 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header'; // Nav bar on component on top
 import MetricsTable, { QueryMetrics } from './MetricsTable'; // component that has the query mertics
 import QueryHistoryDialog, { SavedQuery } from './QueryHistoryDialog'; // component that you can view your past queries.
-import QueryComparisonDialog from './QueryComparisonDialog';
 import QueryComparisonPage from './QueryComparisonPage';
 import TestQueryForm from './TestQueryForm';
 import RedisTestDialog, { RedisTestResult } from './RedisTestDialog';
@@ -54,17 +53,11 @@ const TestQueryPage: React.FC = () => {
   // State for saved queries and comparison
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
   const [showQueryHistory, setShowQueryHistory] = useState(false);
-  const [showComparisonDialog, setShowComparisonDialog] = useState(false);
-  const [selectedQueries, setSelectedQueries] = useState<{
-    first: number | null;
-    second: number | null;
-  }>({
-    first: null,
-    second: null,
-  });
-  const [compareMode, setCompareMode] = useState(false);
+
   const [firstQuery, setFirstQuery] = useState<SavedQuery | null>(null);
   const [secondQuery, setSecondQuery] = useState<SavedQuery | null>(null);
+  const [selectedQueryIds, setSelectedQueryIds] = useState<number[]>([]);
+  const [compareMode, setCompareMode] = useState(false);
 
   // Redis state
   const [redisDialogOpen, setRedisDialogOpen] = useState(false);
@@ -85,13 +78,17 @@ const TestQueryPage: React.FC = () => {
     }
   };
 
-  // Check if user is authenticated on component mount
+  // Run once on mount - check auth and load saved queries if authenticated
   useEffect(() => {
-    checkAuthentication();
-    if (isAuthenticated) {
+    const isAuthed = checkAuthentication();
+    if (isAuthed) {
       fetchSavedQueries();
     }
-  }, [isAuthenticated]);
+    // Run once on mount only - adding fetchSavedQueries to deps would cause an infinite loop
+    // since it's recreated on every render. checkAuthentication return value is used
+    // instead of isAuthenticated state to avoid stale state timing issue.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch saved queries from the backend
   const fetchSavedQueries = async () => {
@@ -168,6 +165,7 @@ const TestQueryPage: React.FC = () => {
 
       const data: QueryMetrics = await response.json();
       setQueryMetrics(data);
+      setQueryId(data.id); // adding this for the redis button to work on fresh new query,
 
       // Refresh the saved queries list after successful fetch
       await fetchSavedQueries();
@@ -179,41 +177,31 @@ const TestQueryPage: React.FC = () => {
     }
   };
 
-  // Function to handle selecting queries for comparison
   const handleCompare = () => {
-    if (selectedQueries.first !== null && selectedQueries.second !== null) {
-      const first =
-        savedQueries.find((q) => q.id === selectedQueries.first) || null;
-      const second =
-        savedQueries.find((q) => q.id === selectedQueries.second) || null;
-
-      setFirstQuery(first);
-      setSecondQuery(second);
-      setCompareMode(true);
-      setShowComparisonDialog(false);
-    }
+    const first =
+      savedQueries.find((q) => q.id === selectedQueryIds[0]) ?? null;
+    const second =
+      savedQueries.find((q) => q.id === selectedQueryIds[1]) ?? null;
+    setFirstQuery(first);
+    setSecondQuery(second);
+    setCompareMode(true);
   };
 
   // Function to handle loading a query from history
   // Takes in the string and metrics thats that have a set type for each metric.
   const handleLoadQuery = (
+    id: number,
+    name: string,
     queryText: string,
     metrics: QueryMetrics,
-    id: number,
   ) => {
     setQueryId(id);
+    setUri_string('');
+    setQueryName(name);
     setQuery(queryText);
     setQueryMetrics(metrics);
     setShowQueryHistory(false);
     setCompareMode(false);
-  };
-
-  // Function to handle query selection for comparison
-  const handleSelectQuery = (key: 'first' | 'second', value: number) => {
-    setSelectedQueries({
-      ...selectedQueries,
-      [key]: value,
-    });
   };
 
   // Redirect to login if user is not authenticated
@@ -286,9 +274,6 @@ const TestQueryPage: React.FC = () => {
           isAuthenticated={isAuthenticated}
           onHistoryClick={() => {
             setShowQueryHistory(true);
-            if (!compareMode) {
-              setSelectedQueries({ first: null, second: null });
-            }
           }}
         />
 
@@ -315,15 +300,10 @@ const TestQueryPage: React.FC = () => {
             <QueryComparisonPage
               firstQuery={firstQuery}
               secondQuery={secondQuery}
-              onOpenCompare={() => {
-                setShowQueryHistory(false);
-                setShowComparisonDialog(true);
-              }}
               onExitCompare={() => {
+                setSelectedQueryIds([]);
                 // When we exit out setCompareMode becomes false and the page goes back to normal view.
                 setCompareMode(false);
-                setFirstQuery(null); //
-                setSecondQuery(null);
               }}
             />
           ) : (
@@ -400,17 +380,12 @@ const TestQueryPage: React.FC = () => {
         onClose={() => setShowQueryHistory(false)}
         savedQueries={savedQueries}
         onLoadQuery={handleLoadQuery}
-        onOpenCompare={() => {
-          setShowQueryHistory(false);
-          setShowComparisonDialog(true);
+        selectedQueryIds={selectedQueryIds}
+        onToggleSelect={(id: number) => {
+          setSelectedQueryIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          );
         }}
-      />
-      <QueryComparisonDialog
-        open={showComparisonDialog}
-        onClose={() => setShowComparisonDialog(false)}
-        savedQueries={savedQueries}
-        selectedQueries={selectedQueries}
-        onSelectQuery={handleSelectQuery}
         onCompare={handleCompare}
       />
       <RedisTestDialog
