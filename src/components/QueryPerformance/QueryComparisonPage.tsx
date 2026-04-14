@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Typography,
@@ -8,59 +8,58 @@ import {
   CardContent,
   Paper,
 } from '@mui/material';
-import { SavedQuery } from './QueryHistory';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts';
+import { SavedQuery } from './QueryHistoryDialog';
 import MetricsTable from './MetricsTable';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
-import LeanQueryAnalyzer from './LeanQueryAnalyzer';
 
-interface QueryComparisonViewProps {
+interface QueryComparisonPageProps {
   firstQuery: SavedQuery | null;
   secondQuery: SavedQuery | null;
   onExitCompare: () => void;
 }
+const COLORS = {
+  before: '#EF4444',
+  after: '#10B981',
+};
 
-const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
+const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
   firstQuery,
   secondQuery,
   onExitCompare,
 }) => {
-  const [comparisonResults, setComparisonResults] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
   if (!firstQuery || !secondQuery) return null;
 
-  // Function to compare queries using the enhanced API
-  const handleCompareQueries = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:4002/api/query/compare', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query1: firstQuery.queryText,
-          query2: secondQuery.queryText,
-        }),
-      });
-
-      if (response.ok) {
-        const results = await response.json();
-        setComparisonResults(results);
-      }
-    } catch (error) {
-      console.error('Comparison failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Auto-compare when component mounts
-  useEffect(() => {
-    handleCompareQueries();
-  }, [firstQuery, secondQuery]);
+  const comparisonChartData = [
+    {
+      metric: 'Exec Time (ms)',
+      Before: firstQuery.metrics.executionTime,
+      After: secondQuery.metrics.executionTime,
+    },
+    {
+      metric: 'Total Cost',
+      Before: firstQuery.metrics.totalCost,
+      After: secondQuery.metrics.totalCost,
+    },
+    {
+      metric: 'Buffer Reads',
+      Before: firstQuery.metrics.sharedReadBlocks ?? 0,
+      After: secondQuery.metrics.sharedReadBlocks ?? 0,
+    },
+    {
+      metric: 'Cache Hit (%)',
+      Before: firstQuery.metrics.cacheHitRatio ?? 0,
+      After: secondQuery.metrics.cacheHitRatio ?? 0,
+    },
+  ];
 
   return (
     <Box>
@@ -75,14 +74,7 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
         <Typography variant='h5' color='white'>
           Query Comparison
         </Typography>
-        <Button
-          onClick={handleCompareQueries}
-          variant='contained'
-          startIcon={<CompareArrowsIcon />}
-          disabled={loading}
-        >
-          {loading ? 'Comparing...' : 'Compare Queries'}
-        </Button>
+
         <Button
           variant='outlined'
           onClick={onExitCompare}
@@ -93,11 +85,12 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           Exit Comparison
         </Button>
       </Box>
-
-      <Grid container spacing={2}>
+      <Grid container spacing={2} alignItems='stretch'>
         {/* First Query */}
-        <Grid item xs={6}>
-          <Card sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+        <Grid item xs={6} sx={{ display: 'flex' }}>
+          <Card
+            sx={{ bgcolor: 'background.paper', borderRadius: 2, width: '100%' }}
+          >
             <CardContent>
               <Typography variant='h6' color='white' gutterBottom>
                 {firstQuery.queryName}
@@ -111,13 +104,21 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
         </Grid>
 
         {/* Second Query */}
-        <Grid item xs={6}>
-          <Card sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+        <Grid item xs={6} sx={{ display: 'flex' }}>
+          <Card
+            sx={{ bgcolor: 'background.paper', borderRadius: 2, width: '100%' }}
+          >
             <CardContent>
               <Typography variant='h6' color='white' gutterBottom>
                 {secondQuery.queryName}
               </Typography>
-              <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+              <Typography
+                variant='body2'
+                color='text.secondary'
+                sx={{
+                  mb: 2,
+                }}
+              >
                 {secondQuery.queryText}
               </Typography>
               <MetricsTable metrics={secondQuery.metrics} />
@@ -125,7 +126,6 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
           </Card>
         </Grid>
       </Grid>
-
       {/* Performance Difference Summary */}
       <Card sx={{ bgcolor: 'background.paper', borderRadius: 2, mt: 3 }}>
         <CardContent>
@@ -139,18 +139,35 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 <Typography variant='subtitle1' color='white'>
                   Execution Time
                 </Typography>
-                <Typography variant='h6' color='white'>
+                <Typography
+                  variant='h6'
+                  sx={{
+                    color:
+                      firstQuery.metrics.executionTime >
+                      secondQuery.metrics.executionTime
+                        ? '#10b981'
+                        : '#EF4444',
+                  }}
+                >
                   {Math.abs(
-                    ((firstQuery.metrics.executionTime -
-                      secondQuery.metrics.executionTime) /
-                      firstQuery.metrics.executionTime) *
-                      100
+                    ((parseFloat(firstQuery.metrics.executionTime.toFixed(2)) -
+                      parseFloat(
+                        secondQuery.metrics.executionTime.toFixed(2),
+                      )) /
+                      parseFloat(firstQuery.metrics.executionTime.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.executionTime >
                   secondQuery.metrics.executionTime
-                    ? ' faster'
-                    : ' slower'}
+                    ? ` faster`
+                    : ` slower`}
+                </Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {firstQuery.metrics.executionTime >
+                  secondQuery.metrics.executionTime
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
                 </Typography>
               </Paper>
             </Grid>
@@ -160,18 +177,33 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 <Typography variant='subtitle1' color='white'>
                   Planning Time
                 </Typography>
-                <Typography variant='h6' color='white'>
+                <Typography
+                  variant='h6'
+                  sx={{
+                    color:
+                      firstQuery.metrics.planningTime >
+                      secondQuery.metrics.planningTime
+                        ? '#10b981'
+                        : '#EF4444',
+                  }}
+                >
                   {Math.abs(
-                    ((firstQuery.metrics.planningTime -
-                      secondQuery.metrics.planningTime) /
-                      firstQuery.metrics.planningTime) *
-                      100
+                    ((parseFloat(firstQuery.metrics.planningTime.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.planningTime.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.planningTime.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.planningTime >
                   secondQuery.metrics.planningTime
                     ? ' faster'
                     : ' slower'}
+                </Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {firstQuery.metrics.planningTime >
+                  secondQuery.metrics.planningTime
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
                 </Typography>
               </Paper>
             </Grid>
@@ -181,33 +213,88 @@ const QueryComparisonView: React.FC<QueryComparisonViewProps> = ({
                 <Typography variant='subtitle1' color='white'>
                   Total Cost
                 </Typography>
-                <Typography variant='h6' color='white'>
+                <Typography
+                  variant='h6'
+                  sx={{
+                    color:
+                      firstQuery.metrics.totalCost >
+                      secondQuery.metrics.totalCost
+                        ? '#10B981'
+                        : '#EF4444',
+                  }}
+                >
                   {Math.abs(
-                    ((firstQuery.metrics.totalCost -
-                      secondQuery.metrics.totalCost) /
-                      firstQuery.metrics.totalCost) *
-                      100
+                    ((parseFloat(firstQuery.metrics.totalCost.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.totalCost.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.totalCost.toFixed(2))) *
+                      100,
                   ).toFixed(2)}
                   %
                   {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost
                     ? ' lower'
                     : ' higher'}
                 </Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
+                </Typography>
               </Paper>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
-
-      {/* Enhanced Lean Query Analyzer Comparison */}
-      {comparisonResults && (
-        <LeanQueryAnalyzer
-          comparisonData={comparisonResults}
-          mode='comparison'
-        />
-      )}
+      {/* Bar chart */}
+      <Card sx={{ bgcolor: 'background.paper', borderRadius: 2, mt: 3 }}>
+        <CardContent>
+          <Typography variant='h6' color='white' gutterBottom>
+            Performance Chart
+          </Typography>
+          <ResponsiveContainer width='100%' height={300}>
+            <BarChart
+              data={comparisonChartData}
+              margin={{ top: 8, right: 24, left: 0, bottom: 8 }}
+            >
+              <CartesianGrid
+                strokeDasharray='3 3'
+                stroke='rgba(255,255,255,0.08)'
+              />
+              <XAxis
+                dataKey='metric'
+                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1F2937',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8,
+                  color: '#F9FAFB',
+                  fontSize: 13,
+                }}
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              />
+              <Legend
+                wrapperStyle={{ color: '#9CA3AF', fontSize: 13, paddingTop: 8 }}
+              />
+              <Bar
+                dataKey='Before'
+                fill={COLORS.before}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar dataKey='After' fill={COLORS.after} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </Box>
   );
 };
 
-export default QueryComparisonView;
+export default QueryComparisonPage;

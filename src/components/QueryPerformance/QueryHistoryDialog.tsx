@@ -15,6 +15,8 @@ import {
   TableRow,
   TableCell,
   Paper,
+  Checkbox,
+  Tooltip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
@@ -33,9 +35,15 @@ interface QueryHistoryDialogProps {
   open: boolean;
   onClose: () => void;
   savedQueries: SavedQuery[];
-  onLoadQuery: (queryText: string, metrics: QueryMetrics) => void;
-  onOpenCompare: () => void;
-  onCompareWithCurrent?: (historicalQuery: SavedQuery) => void;
+  onLoadQuery: (
+    queryId: number,
+    queryName: string,
+    queryText: string,
+    metrics: QueryMetrics,
+  ) => void;
+  selectedQueryIds: number[];
+  onToggleSelect: (id: number) => void;
+  onCompare: () => void;
 }
 
 const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
@@ -43,8 +51,9 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
   onClose,
   savedQueries,
   onLoadQuery,
-  onOpenCompare,
-  onCompareWithCurrent,
+  selectedQueryIds,
+  onToggleSelect,
+  onCompare,
 }) => {
   return (
     <Dialog
@@ -80,6 +89,7 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell />
                   <TableCell>Name</TableCell>
                   <TableCell>Query</TableCell>
                   <TableCell>Execution Time</TableCell>
@@ -91,6 +101,12 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
               <TableBody>
                 {savedQueries.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedQueryIds.includes(item.id)}
+                        onChange={() => onToggleSelect(item.id)}
+                      />
+                    </TableCell>
                     <TableCell>{item.queryName}</TableCell>
                     <TableCell>
                       {item.queryText.length > 30
@@ -113,23 +129,17 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
                         size='small'
                         sx={{
                           textTransform: 'none',
-                          mr: 1,
                         }}
                         onClick={() =>
-                          onLoadQuery(item.queryText, item.metrics)
+                          onLoadQuery(
+                            item.id,
+                            item.queryName,
+                            item.queryText,
+                            item.metrics,
+                          )
                         }
                       >
                         Load
-                      </Button>
-                      <Button
-                        variant='contained'
-                        size='small'
-                        sx={{
-                          textTransform: 'none',
-                        }}
-                        onClick={() => onCompareWithCurrent?.(item)}
-                      >
-                        Compare
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -140,13 +150,30 @@ const QueryHistoryDialog: React.FC<QueryHistoryDialogProps> = ({
         )}
       </DialogContent>
       <DialogActions>
-        <Button
-          onClick={onOpenCompare}
-          variant='contained'
-          startIcon={<CompareArrowsIcon />}
+        <Tooltip
+          title={
+            selectedQueryIds.length !== 2 ? 'Select 2 queries to compare' : ''
+          }
+          componentsProps={{
+            tooltip: {
+              sx: { fontSize: '0.85rem' },
+            },
+          }}
         >
-          Compare Queries
-        </Button>
+          <span>
+            <Button
+              onClick={() => {
+                onCompare();
+                onClose();
+              }}
+              variant='contained'
+              startIcon={<CompareArrowsIcon />}
+              disabled={selectedQueryIds.length !== 2}
+            >
+              Compare Queries
+            </Button>
+          </span>
+        </Tooltip>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>

@@ -203,13 +203,13 @@ const QueryMonitor: React.FC = () => {
 
               {/* Test Query Button */}
               <Button
-                onClick={() => navigate('/test-query')}
+                onClick={() => navigate('/query-tester')}
                 variant='outlined'
                 sx={{
                   textTransform: 'none',
                 }}
               >
-                Test Query
+                Query Tester
               </Button>
             </Box>
           </Container>
