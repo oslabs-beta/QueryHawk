@@ -33,37 +33,6 @@ const metrics = {
   totalCost: 2641,
 };
 
-// const testQueries = [
-//   'SELECT * FROM customers;',
-//   'SELECT * FROM orders WHERE customer_id IN (SELECT id FROM customers WHERE total_spent::numeric > 500);',
-//   'SELECT id, first_name, last_name, email FROM customers;',
-//   'SELECT customer_id, COUNT(*) FROM orders GROUP BY customer_id;',
-//   'SELECT * FROM order_items WHERE quantity::numeric > 5;',
-//   'SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id;',
-//   'SELECT * FROM products WHERE price::numeric > (SELECT AVG(price::numeric) FROM products);',
-//   'SELECT * FROM employees WHERE salary::numeric > 50000;',
-//   'SELECT * FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id;',
-//   `SELECT * FROM audit_log WHERE event_type = 'login';`,
-//   "SELECT * FROM customers WHERE created_at::date > '2023-01-01';",
-//   "SELECT * FROM products WHERE category = 'Electronics';",
-//   "SELECT * FROM employees WHERE department = 'Engineering';",
-//   "SELECT * FROM audit_log WHERE user_id::text = '123';",
-//   'SELECT * FROM order_items WHERE total_price::numeric > 100;',
-//   'SELECT * FROM products WHERE stock_quantity::numeric < 10;',
-//   "SELECT * FROM orders WHERE status = 'pending';",
-//   'SELECT * FROM customers WHERE loyalty_points::numeric > 500;',
-//   "SELECT * FROM employees WHERE hire_date::date > '2022-01-01';",
-//   'SELECT * FROM orders WHERE total_amount::numeric > 1000;',
-//   'SELECT department, COUNT(*) FROM employees GROUP BY department;',
-//   'SELECT category, AVG(price::numeric) FROM products GROUP BY category;',
-//   'SELECT status, COUNT(*), SUM(total_amount::numeric) FROM orders GROUP BY status;',
-//   'SELECT e.id, e.name, e.role, e.salary FROM employees e WHERE e.salary::numeric > 60000;',
-//   "SELECT o.id, o.order_date, o.status, o.total_amount FROM orders o JOIN customers c ON o.customer_id = c.id WHERE o.status = 'completed';",
-//   'SELECT p.product_name, p.category, p.price, oi.quantity FROM products p JOIN order_items oi ON p.id = oi.product_id;',
-//   'SELECT id, name, department FROM employees WHERE salary::numeric > (SELECT AVG(salary::numeric) FROM employees);',
-//   "SELECT id, product_name, price FROM products WHERE price::numeric > (SELECT AVG(price::numeric) FROM products) AND category = 'Electronics';",
-// ];
-
 const testQueries = [
   'SELECT * FROM customers;',
   'SELECT * FROM orders WHERE customer_id IN (SELECT id FROM customers WHERE total_spent::numeric > 500);',
@@ -75,7 +44,26 @@ const testQueries = [
   'SELECT * FROM employees WHERE salary::numeric > 50000;',
   'SELECT * FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id;',
   `SELECT * FROM audit_log WHERE event_type = 'login';`,
+  "SELECT * FROM customers WHERE created_at::date > '2023-01-01';",
+  "SELECT * FROM products WHERE category = 'Electronics';",
+  "SELECT * FROM employees WHERE department = 'Engineering';",
+  "SELECT * FROM audit_log WHERE user_id::text = '123';",
+  'SELECT * FROM order_items WHERE total_price::numeric > 100;',
+  'SELECT * FROM products WHERE stock_quantity::numeric < 10;',
+  "SELECT * FROM orders WHERE status = 'pending';",
+  'SELECT * FROM customers WHERE loyalty_points::numeric > 500;',
+  "SELECT * FROM employees WHERE hire_date::date > '2022-01-01';",
+  'SELECT * FROM orders WHERE total_amount::numeric > 1000;',
+  'SELECT department, COUNT(*) FROM employees GROUP BY department;',
+  'SELECT category, AVG(price::numeric) FROM products GROUP BY category;',
+  'SELECT status, COUNT(*), SUM(total_amount::numeric) FROM orders GROUP BY status;',
+  'SELECT e.id, e.name, e.role, e.salary FROM employees e WHERE e.salary::numeric > 60000;',
+  "SELECT o.id, o.order_date, o.status, o.total_amount FROM orders o JOIN customers c ON o.customer_id = c.id WHERE o.status = 'completed';",
+  'SELECT p.product_name, p.category, p.price, oi.quantity FROM products p JOIN order_items oi ON p.id = oi.product_id;',
+  'SELECT id, name, department FROM employees WHERE salary::numeric > (SELECT AVG(salary::numeric) FROM employees);',
+  "SELECT id, product_name, price FROM products WHERE price::numeric > (SELECT AVG(price::numeric) FROM products) AND category = 'Electronics';",
 ];
+
 async function runValidation() {
   let totalHallucinationsWithSchemaCount = 0;
   let totalHallucinationsWithoutSchemaCount = 0;
