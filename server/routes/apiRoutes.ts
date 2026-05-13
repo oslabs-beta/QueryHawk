@@ -13,6 +13,8 @@ import {
   getTargetStatus,
 } from '../utils/alloyPostgresExporter';
 import redisController from '../controllers/redisController';
+import aiController from '../controllers/aiController';
+import { optimizationLimiter } from '../middleware/rateLimitMiddleware';
 
 const router = express.Router();
 
@@ -82,22 +84,16 @@ router.post(
   redisController.runRedisTest,
 );
 
-// Add query analysis endpoints
 router.post(
-  '/query/analyze',
+  '/query/optimization',
   authenticateUser,
-  userDatabaseController.analyzeQuery,
-);
-
-router.post(
-  '/query/compare',
-  authenticateUser,
-  userDatabaseController.compareQueries,
+  aiController.getQueryOptimization,
 );
 
 router.get(
   '/query/history/:queryHash',
   authenticateUser,
+  optimizationLimiter,
   userDatabaseController.getQueryHistory,
 );
 
