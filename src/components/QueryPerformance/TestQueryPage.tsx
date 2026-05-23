@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -11,7 +11,6 @@ import {
   Button,
   CssBaseline,
   Tooltip,
-  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,7 +19,6 @@ import Header from './Header'; // Nav bar on component on top
 import MetricsTable, { QueryMetrics } from './MetricsTable'; // component that has the query mertics
 import QueryHistoryDialog, { SavedQuery } from './QueryHistoryDialog'; // component that you can view your past queries.
 import QueryComparisonPage from './QueryComparisonPage';
-import OptimizationResultCard from './OptimizationResultCard';
 import TestQueryForm from './TestQueryForm';
 import RedisTestDialog, { RedisTestResult } from './RedisTestDialog';
 
@@ -67,22 +65,6 @@ const TestQueryPage: React.FC = () => {
   const [redisMetrics, setRedisMetrics] = useState<RedisTestResult | null>(
     null,
   );
-
-  // Represents what query was just tested
-  const [savedQueryText, setSavedQueryText] = useState<string | null>(null);
-
-  const [copied, setCopied] = useState(false);
-
-  // Optimization
-  const [optimizationLoading, setOptimizationLoading] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState<{
-    suggestedQuery: string;
-    explanation: string;
-    warning?: string;
-  } | null>(null);
-
-  const optimizationResultRef = useRef<HTMLDivElement>(null);
-
   // Create authentication check
   const checkAuthentication = () => {
     const token = localStorage.getItem('authToken');
@@ -107,13 +89,6 @@ const TestQueryPage: React.FC = () => {
     // instead of isAuthenticated state to avoid stale state timing issue.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Automatically scrolls to the AI result every time optimizationResult changes
-  useEffect(() => {
-    if (optimizationResult && optimizationResultRef.current) {
-      optimizationResultRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [optimizationResult]);
 
   // Fetch saved queries from the backend
   const fetchSavedQueries = async () => {
@@ -190,8 +165,8 @@ const TestQueryPage: React.FC = () => {
 
       const data: QueryMetrics = await response.json();
       setQueryMetrics(data);
-      setQueryId(data.id);
-      setSavedQueryText(query);
+      setQueryId(data.id); // adding this for the redis button to work on fresh new query,
+
       // Refresh the saved queries list after successful fetch
       await fetchSavedQueries();
     } catch (err) {
@@ -225,10 +200,8 @@ const TestQueryPage: React.FC = () => {
     setQueryName(name);
     setQuery(queryText);
     setQueryMetrics(metrics);
-    setSavedQueryText(queryText);
     setShowQueryHistory(false);
     setCompareMode(false);
-    setOptimizationResult(null);
   };
 
   // Redirect to login if user is not authenticated
@@ -236,69 +209,9 @@ const TestQueryPage: React.FC = () => {
     navigate('/auth');
   };
 
-  // Function to handle New Query button
-  const handleNewQuery = () => {
-    setUri_string('');
-    setQueryName('');
-    setQuery('');
-    setQueryId(null);
-    setQueryMetrics(null);
-    setError(null);
-    setSavedQueryText('');
-    setOptimizationResult(null);
-  };
-
-  const handleOptimization = async () => {
-    setOptimizationLoading(true);
-    setOptimizationResult(null);
-    setError(null);
-
-    try {
-      // check if user authenticated
-      if (!checkAuthentication()) {
-        throw Error('Authentication required. Please login to continue');
-      }
-      const token = localStorage.getItem(`authToken`);
-
-      const response = await fetch(
-        'http://localhost:4002/api/query/optimization',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            query: savedQueryText,
-            metrics: queryMetrics,
-            uri_string: uri_string,
-          }),
-        },
-      );
-
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
-        throw Error('Authentication required. Please login to continue.');
-      }
-
-      if (!response.ok) {
-        throw Error('Failed to optimize query with AI.');
-      }
-
-      const data = await response.json();
-      setOptimizationResult(data);
-    } catch (err) {
-      setError('Error optimizing query with AI. Please try again.');
-      console.error(err);
-    } finally {
-      setOptimizationLoading(false);
-    }
-  };
-
   // Function to handle redis test
   const handleRedisTest = async () => {
+    // Things it needs
     setRedisLoading(true);
     setRedisDialogOpen(true);
     setRedisMetrics(null);
@@ -311,6 +224,8 @@ const TestQueryPage: React.FC = () => {
       }
       const token = localStorage.getItem(`authToken`);
 
+      // need to fetch our route in our backend that has runRedisTest
+      // it needs the queryId
       const response = await fetch(
         'http://localhost:4002/api/run-query/redis',
         {
@@ -350,30 +265,6 @@ const TestQueryPage: React.FC = () => {
     }
   };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(
-      optimizationResult?.suggestedQuery ?? '',
-    );
-    setCopied(true);
-
-    setTimeout(() => {
-      setCopied(false);
-    }, 3000);
-  };
-
-  const handleLoadSuggestedQuery = () => {
-    setUri_string('');
-    setQueryName(`${queryName} (AI Optimized)`);
-    setQuery(optimizationResult?.suggestedQuery ?? '');
-    setQueryId(null);
-    setQueryMetrics(null);
-    setError(null);
-    setSavedQueryText('');
-    setOptimizationResult(null);
-  };
-
-  const isQueryLoaded = queryMetrics !== null;
-
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline /> {/* Applies cosistent base style across browsers */}
@@ -411,34 +302,13 @@ const TestQueryPage: React.FC = () => {
               secondQuery={secondQuery}
               onExitCompare={() => {
                 setSelectedQueryIds([]);
+                // When we exit out setCompareMode becomes false and the page goes back to normal view.
                 setCompareMode(false);
-                handleNewQuery();
               }}
             />
           ) : (
             // Normal Test Query View
             <>
-              {isQueryLoaded && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2,
-                  }}
-                >
-                  <Typography variant='h5' color='white'>
-                    {queryName}
-                  </Typography>
-                  <Button
-                    variant='outlined'
-                    onClick={handleNewQuery}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    New Query
-                  </Button>
-                </Box>
-              )}
               <TestQueryForm
                 uri_string={uri_string}
                 query={query}
@@ -448,7 +318,6 @@ const TestQueryPage: React.FC = () => {
                 onQueryChange={setQuery}
                 onQueryNameChange={setQueryName}
                 onSubmit={fetchMetrics}
-                isQueryLoaded={isQueryLoaded}
               />
 
               {error && (
@@ -469,7 +338,6 @@ const TestQueryPage: React.FC = () => {
                         display: 'flex',
                         justifyContent: 'center',
                         mt: 2,
-                        gap: 2,
                       }}
                     >
                       <Tooltip
@@ -492,62 +360,15 @@ const TestQueryPage: React.FC = () => {
                             onClick={handleRedisTest}
                             variant='contained'
                             disabled={redisLoading || !queryId || !uri_string}
-                            sx={{ mt: 2, textTransform: 'none' }}
+                            sx={{ mt: 2 }}
                           >
                             Run with Redis
-                          </Button>
-                        </span>
-                      </Tooltip>
-
-                      <Tooltip
-                        title={
-                          optimizationLoading
-                            ? 'Optimizing..'
-                            : !uri_string
-                              ? 'Enter your database URI above to optimize your query'
-                              : ''
-                        }
-                        componentsProps={{
-                          tooltip: {
-                            sx: {
-                              fontSize: '0.840rem',
-                            },
-                          },
-                        }}
-                      >
-                        <span>
-                          <Button
-                            size='small'
-                            onClick={handleOptimization}
-                            variant='contained'
-                            disabled={
-                              optimizationLoading ||
-                              !savedQueryText ||
-                              !queryMetrics ||
-                              !uri_string
-                            }
-                            sx={{ mt: 2, textTransform: 'none' }}
-                          >
-                            {optimizationLoading ? (
-                              <CircularProgress size={24} color='inherit' />
-                            ) : (
-                              'Optimize Query with AI'
-                            )}
                           </Button>
                         </span>
                       </Tooltip>
                     </Box>
                   </CardContent>
                 </Card>
-              )}
-              {optimizationResult && (
-                <OptimizationResultCard
-                  ref={optimizationResultRef}
-                  result={optimizationResult}
-                  copied={copied}
-                  onCopy={handleCopy}
-                  onLoad={handleLoadSuggestedQuery}
-                />
               )}
             </>
           )}

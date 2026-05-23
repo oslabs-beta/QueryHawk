@@ -37,7 +37,6 @@ interface TestQueryFormProps {
   onQueryChange: (value: string) => void;
   onQueryNameChange: (value: string) => void;
   onSubmit: () => void;
-  isQueryLoaded: boolean;
 }
 
 const TestQueryForm: React.FC<TestQueryFormProps> = ({
@@ -49,10 +48,9 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
   onQueryChange,
   onQueryNameChange,
   onSubmit,
-  isQueryLoaded,
 }) => {
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 4 }}>
       <Card sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant='h5' color='white' gutterBottom>
@@ -76,7 +74,6 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
               onChange={(e) => onQueryNameChange(e.target.value)}
               sx={inputStyles}
               placeholder='Enter a descriptive name for this query'
-              InputProps={{ readOnly: isQueryLoaded }}
             />
             <TextField
               label='Query'
@@ -86,15 +83,12 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
               rows={4}
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              InputProps={{ readOnly: isQueryLoaded }}
             />
             <Tooltip
               title={
-                isQueryLoaded
-                  ? 'Click New Query to test a different query'
-                  : !uri_string || !queryName || !query
-                    ? 'Please fill in Database URI, Query Name, and Query to fetch Metrics'
-                    : ''
+                !uri_string || !queryName || !query
+                  ? 'Please fill in Database URI, Query Name, and Query to fetch Metrics'
+                  : ''
               }
               componentsProps={{
                 tooltip: {
@@ -106,13 +100,7 @@ const TestQueryForm: React.FC<TestQueryFormProps> = ({
                 <Button
                   variant='contained'
                   onClick={onSubmit}
-                  disabled={
-                    loading ||
-                    !uri_string ||
-                    !query ||
-                    !queryName ||
-                    isQueryLoaded
-                  }
+                  disabled={loading || !uri_string || !query || !queryName}
                   sx={buttonStyles}
                 >
                   {loading ? (

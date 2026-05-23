@@ -38,22 +38,6 @@ const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
 }) => {
   if (!firstQuery || !secondQuery) return null;
 
-  const roundedExecFirst = parseFloat(
-    firstQuery.metrics.executionTime.toFixed(2),
-  );
-  const roundedExecSecond = parseFloat(
-    secondQuery.metrics.executionTime.toFixed(2),
-  );
-  const roundedPlanFirst = parseFloat(
-    firstQuery.metrics.planningTime.toFixed(2),
-  );
-  const roundedPlanSecond = parseFloat(
-    secondQuery.metrics.planningTime.toFixed(2),
-  );
-  const roundedCostFirst = parseFloat(firstQuery.metrics.totalCost.toFixed(2));
-  const roundedCostSecond = parseFloat(
-    secondQuery.metrics.totalCost.toFixed(2),
-  );
   const comparisonChartData = [
     {
       metric: 'Exec Time (ms)',
@@ -159,23 +143,31 @@ const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
                   variant='h6'
                   sx={{
                     color:
-                      roundedExecFirst === roundedExecSecond
-                        ? '#9CA3AF'
-                        : roundedExecFirst > roundedExecSecond
-                          ? '#10b981'
-                          : '#EF4444',
+                      firstQuery.metrics.executionTime >
+                      secondQuery.metrics.executionTime
+                        ? '#10b981'
+                        : '#EF4444',
                   }}
                 >
-                  {roundedExecFirst === roundedExecSecond
-                    ? 'No difference'
-                    : `${Math.abs(((roundedExecFirst - roundedExecSecond) / roundedExecFirst) * 100).toFixed(2)}% ${roundedExecFirst > roundedExecSecond ? 'faster' : 'slower'}`}
+                  {Math.abs(
+                    ((parseFloat(firstQuery.metrics.executionTime.toFixed(2)) -
+                      parseFloat(
+                        secondQuery.metrics.executionTime.toFixed(2),
+                      )) /
+                      parseFloat(firstQuery.metrics.executionTime.toFixed(2))) *
+                      100,
+                  ).toFixed(2)}
+                  %
+                  {firstQuery.metrics.executionTime >
+                  secondQuery.metrics.executionTime
+                    ? ` faster`
+                    : ` slower`}
                 </Typography>
                 <Typography variant='caption' color='text.secondary'>
-                  {roundedExecFirst === roundedExecSecond
-                    ? 'Queries are equivalent'
-                    : roundedExecFirst > roundedExecSecond
-                      ? `${secondQuery.queryName} is recommended`
-                      : `${firstQuery.queryName} is recommended`}
+                  {firstQuery.metrics.executionTime >
+                  secondQuery.metrics.executionTime
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
                 </Typography>
               </Paper>
             </Grid>
@@ -189,23 +181,29 @@ const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
                   variant='h6'
                   sx={{
                     color:
-                      roundedPlanFirst === roundedPlanSecond
-                        ? '#9CA3AF'
-                        : roundedPlanFirst > roundedPlanSecond
-                          ? '#10b981'
-                          : '#EF4444',
+                      firstQuery.metrics.planningTime >
+                      secondQuery.metrics.planningTime
+                        ? '#10b981'
+                        : '#EF4444',
                   }}
                 >
-                  {roundedPlanFirst === roundedPlanSecond
-                    ? 'No difference'
-                    : `${Math.abs(((roundedPlanFirst - roundedPlanSecond) / roundedPlanFirst) * 100).toFixed(2)}% ${roundedPlanFirst > roundedPlanSecond ? 'faster' : 'slower'}`}
+                  {Math.abs(
+                    ((parseFloat(firstQuery.metrics.planningTime.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.planningTime.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.planningTime.toFixed(2))) *
+                      100,
+                  ).toFixed(2)}
+                  %
+                  {firstQuery.metrics.planningTime >
+                  secondQuery.metrics.planningTime
+                    ? ' faster'
+                    : ' slower'}
                 </Typography>
                 <Typography variant='caption' color='text.secondary'>
-                  {roundedPlanFirst === roundedPlanSecond
-                    ? 'Queries are equivalent'
-                    : roundedPlanFirst > roundedPlanSecond
-                      ? `${secondQuery.queryName} is recommended`
-                      : `${firstQuery.queryName} is recommended`}
+                  {firstQuery.metrics.planningTime >
+                  secondQuery.metrics.planningTime
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
                 </Typography>
               </Paper>
             </Grid>
@@ -219,23 +217,27 @@ const QueryComparisonPage: React.FC<QueryComparisonPageProps> = ({
                   variant='h6'
                   sx={{
                     color:
-                      roundedCostFirst === roundedCostSecond
-                        ? '#9CA3AF'
-                        : roundedCostFirst > roundedCostSecond
-                          ? '#10B981'
-                          : '#EF4444',
+                      firstQuery.metrics.totalCost >
+                      secondQuery.metrics.totalCost
+                        ? '#10B981'
+                        : '#EF4444',
                   }}
                 >
-                  {roundedCostFirst === roundedCostSecond
-                    ? 'No difference'
-                    : `${Math.abs(((roundedCostFirst - roundedCostSecond) / roundedCostFirst) * 100).toFixed(2)}% ${roundedCostFirst > roundedCostSecond ? 'lower' : 'higher'}`}
+                  {Math.abs(
+                    ((parseFloat(firstQuery.metrics.totalCost.toFixed(2)) -
+                      parseFloat(secondQuery.metrics.totalCost.toFixed(2))) /
+                      parseFloat(firstQuery.metrics.totalCost.toFixed(2))) *
+                      100,
+                  ).toFixed(2)}
+                  %
+                  {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost
+                    ? ' lower'
+                    : ' higher'}
                 </Typography>
                 <Typography variant='caption' color='text.secondary'>
-                  {roundedCostFirst === roundedCostSecond
-                    ? 'Queries are equivalent'
-                    : roundedCostFirst > roundedCostSecond
-                      ? `${secondQuery.queryName} is recommended`
-                      : `${firstQuery.queryName} is recommended`}
+                  {firstQuery.metrics.totalCost > secondQuery.metrics.totalCost
+                    ? `${secondQuery.queryName} is recommended`
+                    : `${firstQuery.queryName} is recommended`}
                 </Typography>
               </Paper>
             </Grid>

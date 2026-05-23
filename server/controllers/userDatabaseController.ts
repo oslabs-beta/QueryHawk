@@ -1,5 +1,10 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import pg from 'pg';
+import {
+  analyzeQueryWithTracing,
+  compareQueries,
+  ServiceError,
+} from '../services/queryAnalysisService';
 import { pool as appDbPool } from '../db/db';
 
 // Consistent HTTP error responses for this controller
@@ -28,6 +33,8 @@ type UserDatabaseController = {
   fetchUserMetrics: RequestHandler;
   saveMetricsToDB: RequestHandler;
   getSavedQueries: RequestHandler;
+  analyzeQuery: RequestHandler;
+  compareQueries: RequestHandler;
   getQueryHistory: RequestHandler;
   fetchOriginalQuery: RequestHandler;
 };
@@ -61,9 +68,6 @@ const userDatabaseController: UserDatabaseController = {
         },
       });
 
-      // Warmup run — warms cache so the measured run reflects steady state
-      await userDBPool.query(query);
-
       const result = await userDBPool.query(buildExplainAnalyzeQuery(query));
 
       // once done with pool we close connection to save resources.
@@ -76,8 +80,9 @@ const userDatabaseController: UserDatabaseController = {
         return;
       }
 
-      const sharedHitBlocks = queryPlan['Plan']?.['Shared Hit Blocks'] ?? 0;
-      const sharedReadBlocks = queryPlan['Plan']?.['Shared Read Blocks'] ?? 0;
+      const sharedHitBlocks = queryPlan['Planning']?.['Shared Hit Blocks'] || 0;
+      const sharedReadBlocks =
+        queryPlan['Planning']?.['Shared Read Blocks'] || 0;
       const cacheHitRatio =
         sharedHitBlocks + sharedReadBlocks > 0
           ? (sharedHitBlocks / (sharedHitBlocks + sharedReadBlocks)) * 100
@@ -88,8 +93,8 @@ const userDatabaseController: UserDatabaseController = {
         planningTime: queryPlan['Planning Time'],
         rowsReturned: queryPlan['Plan']?.['Actual Rows'],
         actualLoops: queryPlan['Plan']?.['Actual Loops'],
-        sharedHitBlocks: sharedHitBlocks,
-        sharedReadBlocks: sharedReadBlocks,
+        sharedHitBlocks: queryPlan['Planning']?.['Shared Hit Blocks'],
+        sharedReadBlocks: queryPlan['Planning']?.['Shared Read Blocks'],
         workMem: queryPlan['Settings']?.['work_mem'],
         cacheHitRatio: cacheHitRatio,
         startupCost: queryPlan['Plan']?.['Startup Cost'],
@@ -241,6 +246,69 @@ const userDatabaseController: UserDatabaseController = {
         status: 500,
         message: { err: 'Failed to fetch saved queries.' },
       });
+    }
+  },
+
+  analyzeQuery: async (req: Request, res: Response): Promise<void> => {
+    const { sqlQuery } = req.body;
+    const userId = res.locals.userId;
+
+    try {
+      if (!sqlQuery) {
+        sendBadRequest(res, 'SQL query is required.');
+        return;
+      }
+
+      console.log('Analyzing query for user:', userId);
+
+      const { analysis, insights } = await analyzeQueryWithTracing(
+        appDbPool,
+        userId,
+        sqlQuery,
+      );
+
+      res.json({ analysis, insights });
+    } catch (error) {
+      console.error('Query analysis failed:', error);
+
+      if (error instanceof ServiceError && error.statusCode === 400) {
+        sendBadRequest(res, error.message);
+        return;
+      }
+
+      sendServerError(
+        res,
+        'Query analysis failed',
+        error instanceof Error ? error.message : undefined,
+      );
+    }
+  },
+
+  compareQueries: async (req: Request, res: Response): Promise<void> => {
+    const { query1, query2 } = req.body;
+    const userId = res.locals.userId;
+
+    if (!query1 || !query2) {
+      sendBadRequest(res, 'Both queries are required for comparison.');
+      return;
+    }
+
+    try {
+      const comparison = await compareQueries(
+        appDbPool,
+        userId,
+        query1,
+        query2,
+      );
+
+      res.json(comparison);
+    } catch (error) {
+      console.error('Query comparison failed:', error);
+      sendServerError(
+        res,
+        'Query comparison failed',
+        error instanceof Error ? error.message : undefined,
+      );
     }
   },
 
