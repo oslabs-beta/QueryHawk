@@ -259,11 +259,15 @@ docker system prune -a
   <img src="./src/components/assets/QH_Login.png" alt="QueryHawk Login" width="50%" />
 </div>
 
+<br>
+
 ### Database Health Dashboard
 
 <div align="center">
   <img src="./src/components/assets/QH_Dashboard.png" alt="Database Health Dashboard" />
 </div>
+
+<br>
 
 ### Query Metrics
 
@@ -271,17 +275,23 @@ docker system prune -a
   <img src="./src/components/assets/QH_Metrics.png" alt="Query Metrics" />
 </div>
 
+<br>
+
 ### Query Comparison
 
 <div align="center">
   <img src="./src/components/assets/QH_QueryComparison.png" alt="Query Comparison" />
 </div>
 
+<br>
+
 ### AI Recommendation
 
 <div align="center">
   <img src="./src/components/assets/QH_AI_Recommendation.png" alt="AI Recommendation" />
 </div>
+
+<br>
 
 ### Redis vs Postgres Benchmark
 
