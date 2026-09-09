@@ -38,6 +38,7 @@ QueryHawk delivers comprehensive SQL database monitoring and visualization, empo
 - ✅ Complete visibility into query execution plans with detailed buffer and cache statistics
 - ✅ Interactive dashboards for visualizing database health and performance trends
 - ✅ Query comparison tool to benchmark and optimize SQL performance
+- ✅ AI-powered SQL recommendations with schema-aware query optimization
 - ✅ Redis performance testing to benchmark PostgreSQL execution time against Redis cache retrieval
 - ✅ Track query execution paths across entire application with distributed tracing
 
@@ -52,6 +53,7 @@ Gain insights into your SQL databases and enhance how your team approaches datab
 - Execution Plan Analysis: Run "EXPLAIN ANALYZE" to capture detailed planning and execution metrics in real time.
 - Query Performance Profiling: Measure execution time, rows processed, loops, and buffer usage before deploying queries.
 - Side-by-Side Query Comparison: Compare unoptimized vs optimized queries with clear performance breakdowns.
+- AI-Powered Query Recommendations: Generate schema-aware SQL optimizations and explanations.
 - Redis Benchmarking: Benchmark PostgreSQL queries against Redis cache retrieval to quantify caching improvements.
 - Cache Insights: Analyze cache hit ratios and shared buffer usage to identify memory optimization opportunities.
 - Historical Tracking: Save and revisit past queries to monitor performance improvements over time.
@@ -249,65 +251,43 @@ docker system prune -a
 
 </div>
 
----
-
 ## User Interface
 
-<div align="center">
-
-<img src="./src/components/assets/QH_Login.png" alt="Login" width=50% />
-
-<br>
-</div>
-
----
+### Login
 
 <div align="center">
-
-<br>
-
-![Dashboard](/src/components/assets/QH_Dashboard.png)
-<br>
-
+  <img src="./src/components/assets/QH_Login.png" alt="QueryHawk Login" width="50%" />
 </div>
 
----
+### Database Health Dashboard
 
 <div align="center">
-
-<br>
-
-![Metrics](/src/components/assets/QH_Metrics.png)
-
-<br>
-
+  <img src="./src/components/assets/QH_Dashboard.png" alt="Database Health Dashboard" />
 </div>
 
----
+### Query Metrics
 
 <div align="center">
-
-<br>
-
-![Query Comparison](./src/components/assets/QH_QueryComparison.png)
-
-<br>
-
+  <img src="./src/components/assets/QH_Metrics.png" alt="Query Metrics" />
 </div>
 
----
+### Query Comparison
 
 <div align="center">
-
-<br>
-
-![Redis vs PostgreSQL](./src/components/assets/QH_RedisVsPostgreSQL.png)
-
-<br>
-
+  <img src="./src/components/assets/QH_QueryComparison.png" alt="Query Comparison" />
 </div>
 
----
+### AI Recommendation
+
+<div align="center">
+  <img src="./src/components/assets/QH_AI_Recommendation.png" alt="AI Recommendation" />
+</div>
+
+### Redis vs Postgres Benchmark
+
+<div align="center">
+  <img src="./src/components/assets/QH_RedisVsPostgreSQL.png" alt="Redis vs PostgreSQL Benchmark" />
+</div>
 
 ## QueryHawk Team
 
